@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0a0b" />
-<title>ניהול שטיפה · AppNest</title>
+<title>ניהול שטיפת רכבים · AppNest</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -13,55 +13,51 @@
     --grey:#6b7280; --blue:#3b82f6; --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
     --radius:16px;
   }
+  html[data-theme="light"]{
+    --bg:#f4f2ec; --surface:#ffffff; --surface2:#f0eee7; --line:#e3e0d6;
+    --text:#1a1a1d; --muted:#6b6b72; --gold:#a9822a; --gold-soft:#8f6d1f;
+  }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
-  body{
-    background:var(--bg); color:var(--text);
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Hebrew",Arial,sans-serif;
-    line-height:1.5; overscroll-behavior-y:none;
-  }
-  button{font-family:inherit; cursor:pointer}
+  body{background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Hebrew","Noto Sans Arabic",Arial,sans-serif;
+    line-height:1.5;overscroll-behavior-y:none}
+  button{font-family:inherit;cursor:pointer}
   input,select,textarea{font-family:inherit}
   .hidden{display:none !important}
 
-  /* ---- App shell ---- */
   .app{max-width:760px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
-  header.top{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:16px 18px calc(12px + env(safe-area-inset-top));
-    position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(10,10,11,.85));
-    backdrop-filter:blur(8px);z-index:20;border-bottom:1px solid var(--line)
-  }
-  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.3px}
+  header.top{display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px calc(12px + env(safe-area-inset-top));
+    position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(10,10,11,.0));
+    backdrop-filter:blur(8px);z-index:20;border-bottom:1px solid var(--line)}
+  html[data-theme="light"] header.top{background:var(--bg)}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800}
   .brand .dot{width:26px;height:26px;border-radius:50%;
     background:radial-gradient(circle at 35% 30%,var(--gold),var(--gold-soft));
     box-shadow:0 0 0 3px rgba(212,175,55,.15)}
-  .brand small{color:var(--gold);font-weight:800}
-  .who{font-size:12px;color:var(--muted);text-align:left}
+  .brand small{color:var(--gold)}
+  .hbtns{display:flex;gap:8px}
+  .iconbtn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface);color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center}
   main{flex:1;padding:16px 16px 96px}
   h2.screen-title{font-size:20px;margin:4px 2px 14px}
   .muted{color:var(--muted)}
 
-  /* ---- Cards ---- */
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
   .card h3{margin:0 0 10px;font-size:15px}
   .row{display:flex;align-items:center;gap:10px}
   .between{justify-content:space-between}
   .stack{display:flex;flex-direction:column;gap:10px}
 
-  /* ---- Inputs ---- */
   label.field{display:block;margin-bottom:12px}
   label.field span{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-  input,select,textarea{
-    width:100%;padding:13px 14px;background:var(--surface2);border:1px solid var(--line);
-    color:var(--text);border-radius:12px;font-size:16px;outline:none
-  }
+  input,select,textarea{width:100%;padding:13px 14px;background:var(--surface2);border:1px solid var(--line);
+    color:var(--text);border-radius:12px;font-size:16px;outline:none}
   input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 
-  /* ---- Buttons ---- */
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
-    padding:13px 18px;border-radius:12px;border:1px solid var(--line);
-    background:var(--surface2);color:var(--text);font-size:15px;font-weight:600;width:100%}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 18px;border-radius:12px;
+    border:1px solid var(--line);background:var(--surface2);color:var(--text);font-size:15px;font-weight:600;width:100%}
   .btn.gold{background:linear-gradient(180deg,var(--gold),var(--gold-soft));color:#1a1400;border:none}
   .btn.big{padding:20px;font-size:19px;font-weight:800}
   .btn.ghost{background:transparent}
@@ -69,55 +65,50 @@
   .btn:active{transform:translateY(1px)}
   .btn:disabled{opacity:.5}
 
-  /* ---- Status pills ---- */
   .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
   .pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
-  .s-grey{color:var(--grey);background:rgba(107,114,128,.14)}
-  .s-blue{color:var(--blue);background:rgba(59,130,246,.14)}
-  .s-green{color:var(--green);background:rgba(34,197,94,.14)}
-  .s-red{color:var(--red);background:rgba(239,68,68,.14)}
-  .s-amber{color:var(--amber);background:rgba(245,158,11,.14)}
+  .s-grey{color:var(--grey);background:rgba(107,114,128,.16)}
+  .s-blue{color:var(--blue);background:rgba(59,130,246,.16)}
+  .s-green{color:var(--green);background:rgba(34,197,94,.16)}
+  .s-red{color:var(--red);background:rgba(239,68,68,.16)}
+  .s-amber{color:var(--amber);background:rgba(245,158,11,.16)}
 
-  /* ---- Bottom nav ---- */
-  nav.bottom{
-    position:fixed;bottom:0;left:0;right:0;max-width:760px;margin:0 auto;
-    display:flex;background:rgba(20,20,22,.96);backdrop-filter:blur(10px);
-    border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:20
-  }
-  nav.bottom button{flex:1;background:none;border:none;color:var(--muted);
-    padding:10px 4px 12px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:4px}
-  nav.bottom button .ic{font-size:20px}
+  nav.bottom{position:fixed;bottom:0;left:0;right:0;max-width:760px;margin:0 auto;display:flex;
+    background:var(--surface);backdrop-filter:blur(10px);border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);z-index:20}
+  nav.bottom button{flex:1;background:none;border:none;color:var(--muted);padding:10px 2px 12px;font-size:11px;
+    display:flex;flex-direction:column;align-items:center;gap:4px}
+  nav.bottom button .ic{font-size:19px}
   nav.bottom button.active{color:var(--gold)}
 
-  /* ---- Login ---- */
   .login-wrap{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:28px;max-width:420px;margin:0 auto}
-  .login-brand{text-align:center;margin-bottom:28px}
-  .login-brand .dot{width:56px;height:56px;margin:0 auto 12px}
-  .login-brand h1{margin:0;font-size:24px}
+  .login-brand{text-align:center;margin-bottom:24px}
+  .login-brand .dot{width:56px;height:56px;margin:0 auto 12px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,var(--gold),var(--gold-soft));box-shadow:0 0 0 4px rgba(212,175,55,.15)}
+  .login-brand h1{margin:0;font-size:23px}
   .login-brand p{margin:6px 0 0;color:var(--gold);font-weight:700;font-size:14px}
+  .login-top{display:flex;justify-content:center;gap:8px;margin-bottom:18px}
 
-  /* ---- Modal ---- */
   .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:40}
-  .modal{background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;
-    width:100%;max-width:760px;padding:20px;max-height:92dvh;overflow:auto;
-    padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;max-width:760px;
+    padding:20px;max-height:92dvh;overflow:auto;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
   .modal h3{margin:0 0 14px;font-size:18px}
   .modal .grab{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 14px}
 
-  /* ---- Stepper ---- */
-  .stepper{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .stepper button{width:56px;height:52px;background:var(--surface2);border:none;color:var(--gold);font-size:24px}
   .stepper input{text-align:center;border:none;border-radius:0;border-inline:1px solid var(--line);font-size:20px;font-weight:800}
 
-  /* ---- Toast ---- */
-  #toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);
-    background:#000;border:1px solid var(--line);color:var(--text);
-    padding:12px 18px;border-radius:12px;font-size:14px;z-index:60;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
-  #toast.show{opacity:1}
+  .langrow{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface2);margin-bottom:8px;font-size:16px}
+  .langrow.active{border-color:var(--gold)}
 
+  #toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--line);
+    color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;z-index:60;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
+  #toast.show{opacity:1}
   .empty{text-align:center;color:var(--muted);padding:40px 10px}
   .thumb{width:100%;border-radius:12px;margin-top:8px;border:1px solid var(--line)}
-  .spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
+  .badge{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
+  .spin{width:18px;height:18px;border:2px solid rgba(150,150,150,.4);border-top-color:var(--gold);border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -125,26 +116,33 @@
 
 <!-- ============ LOGIN ============ -->
 <section id="loginScreen" class="login-wrap">
+  <div class="login-top">
+    <button class="iconbtn" id="lgLang">🌐</button>
+    <button class="iconbtn" id="lgTheme">🌙</button>
+  </div>
   <div class="login-brand">
     <div class="dot"></div>
-    <h1>ניהול שטיפת רכבים</h1>
+    <h1 data-t="app_title">ניהול שטיפת רכבים</h1>
     <p>AppNest</p>
   </div>
   <div class="card">
-    <label class="field"><span>שם משתמש או אימייל</span>
-      <input id="loginUser" autocomplete="username" placeholder="הקלד שם משתמש" /></label>
-    <label class="field"><span>סיסמה</span>
+    <label class="field"><span data-t="login_user">שם משתמש או אימייל</span>
+      <input id="loginUser" autocomplete="username" data-tph="login_user_ph" /></label>
+    <label class="field"><span data-t="login_pass">סיסמה</span>
       <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" /></label>
-    <button id="loginBtn" class="btn gold big">כניסה</button>
-    <p id="loginErr" class="muted" style="text-align:center;margin:12px 0 0;color:var(--red)"></p>
+    <button id="loginBtn" class="btn gold big" data-t="login_btn">כניסה</button>
+    <p id="loginErr" style="text-align:center;margin:12px 0 0;color:var(--red)"></p>
   </div>
 </section>
 
 <!-- ============ APP ============ -->
 <div id="app" class="app hidden">
   <header class="top">
-    <div class="brand"><div class="dot"></div><div>ניהול שטיפה <small>·</small></div></div>
-    <div class="who"><div id="whoName">—</div><div id="whoRole"></div></div>
+    <div class="brand"><div class="dot"></div><div>AppNest <small>·</small></div></div>
+    <div class="hbtns">
+      <button class="iconbtn" id="hLang">🌐</button>
+      <button class="iconbtn" id="hTheme">🌙</button>
+    </div>
   </header>
   <main id="view"></main>
   <nav id="nav" class="bottom"></nav>
@@ -155,407 +153,507 @@
 
 <script>
 /* ================= CONFIG ================= */
-const SUPA_URL = 'https://kdcuphsvvhtrbusvvagn.supabase.co';
-const SUPA_KEY = 'sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
-const EMAIL_SUFFIX = '@carwash.local'; // used when logging in with a plain username
-const db = supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
+const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
+const EMAIL_SUFFIX='@carwash.local';
+const APP_VERSION='0.2';
+const db=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+/* ================= i18n ================= */
+const LANGS=[['he','עברית'],['en','English'],['ru','Русский'],['es','Español'],['ar','العربية']];
+const RTL=['he','ar'];
+const DICT={
+ app_title:{he:'ניהול שטיפת רכבים',en:'Car Wash Manager',ru:'Управление автомойкой',es:'Gestión de lavado',ar:'إدارة غسيل السيارات'},
+ login_user:{he:'שם משתמש או אימייל',en:'Username or email',ru:'Имя пользователя или email',es:'Usuario o correo',ar:'اسم المستخدم أو البريد'},
+ login_user_ph:{he:'הקלד שם משתמש',en:'Enter username',ru:'Введите имя',es:'Escribe tu usuario',ar:'أدخل اسم المستخدم'},
+ login_pass:{he:'סיסמה',en:'Password',ru:'Пароль',es:'Contraseña',ar:'كلمة المرور'},
+ login_btn:{he:'כניסה',en:'Sign in',ru:'Вход',es:'Entrar',ar:'دخول'},
+ err_empty:{he:'חסר שם משתמש או סיסמה',en:'Missing username or password',ru:'Введите имя и пароль',es:'Falta usuario o contraseña',ar:'الاسم أو كلمة المرور مفقودة'},
+ err_bad:{he:'שם משתמש או סיסמה שגויים',en:'Wrong username or password',ru:'Неверные данные',es:'Usuario o contraseña incorrectos',ar:'بيانات الدخول غير صحيحة'},
+ nav_dash:{he:'לוח',en:'Board',ru:'Панель',es:'Panel',ar:'لوحة'},
+ nav_lots:{he:'מגרשים',en:'Lots',ru:'Площадки',es:'Sitios',ar:'المواقع'},
+ nav_assign:{he:'שיבוץ',en:'Assign',ru:'Назначить',es:'Asignar',ar:'تعيين'},
+ nav_emps:{he:'עובדים',en:'Staff',ru:'Работники',es:'Personal',ar:'الموظفون'},
+ nav_reports:{he:'דוחות',en:'Reports',ru:'Отчёты',es:'Informes',ar:'التقارير'},
+ nav_settings:{he:'הגדרות',en:'Settings',ru:'Настройки',es:'Ajustes',ar:'الإعدادات'},
+ nav_myday:{he:'היום שלי',en:'My day',ru:'Мой день',es:'Mi día',ar:'يومي'},
+ role_owner:{he:'בעלים',en:'Owner',ru:'Владелец',es:'Propietario',ar:'المالك'},
+ role_manager:{he:'מנהל',en:'Manager',ru:'Менеджер',es:'Gerente',ar:'مدير'},
+ role_accountant:{he:'הנהלת חשבונות',en:'Accounting',ru:'Бухгалтерия',es:'Contabilidad',ar:'المحاسبة'},
+ role_employee:{he:'עובד',en:'Employee',ru:'Работник',es:'Empleado',ar:'موظف'},
+ dash_title:{he:'לוח בקרה',en:'Dashboard',ru:'Панель',es:'Panel',ar:'لوحة التحكم'},
+ today:{he:'היום',en:'Today',ru:'Сегодня',es:'Hoy',ar:'اليوم'},
+ u_assignments:{he:'שיבוצים',en:'assignments',ru:'назначений',es:'asignaciones',ar:'تعيينات'},
+ u_lots:{he:'מגרשים',en:'lots',ru:'площадок',es:'sitios',ar:'مواقع'},
+ red_alert:{he:'משימות לא בוצעו',en:'tasks not done',ru:'задач не выполнено',es:'tareas sin hacer',ar:'مهام غير منفذة'},
+ dash_empty:{he:'אין שיבוצים לתאריך הזה. עבור ל“שיבוץ” כדי לתזמן צוות.',en:'No assignments for this date. Use “Assign” to schedule a team.',ru:'Нет назначений. Откройте «Назначить».',es:'Sin asignaciones. Usa “Asignar”.',ar:'لا توجد تعيينات. استخدم “تعيين”.'},
+ u_cars:{he:'רכבים',en:'cars',ru:'авто',es:'autos',ar:'سيارات'},
+ u_preps:{he:'הכנות',en:'preps',ru:'подгот.',es:'prep.',ar:'تحضيرات'},
+ btn_doc:{he:'מסמך',en:'Document',ru:'Документ',es:'Documento',ar:'المستند'},
+ note_lbl:{he:'הערה',en:'Note',ru:'Заметка',es:'Nota',ar:'ملاحظة'},
+ st_scheduled:{he:'מתוזמן',en:'Scheduled',ru:'Запланировано',es:'Programado',ar:'مجدول'},
+ st_working:{he:'בעבודה',en:'Working',ru:'В работе',es:'En curso',ar:'قيد العمل'},
+ st_done:{he:'הושלם',en:'Done',ru:'Готово',es:'Hecho',ar:'مكتمل'},
+ st_missing:{he:'סיים · חסר דיווח',en:'Ended · no report',ru:'Завершено · нет отчёта',es:'Fin · sin informe',ar:'انتهى · بلا تقرير'},
+ st_notdone:{he:'לא בוצע',en:'Not done',ru:'Не выполнено',es:'No hecho',ar:'لم يُنفذ'},
+ lots_title:{he:'מגרשים',en:'Lots',ru:'Площадки',es:'Sitios',ar:'المواقع'},
+ btn_add_lot:{he:'＋ הוסף מגרש',en:'＋ Add lot',ru:'＋ Добавить',es:'＋ Añadir',ar:'＋ إضافة موقع'},
+ lots_empty:{he:'עדיין אין מגרשים. הוסף את הראשון.',en:'No lots yet. Add the first.',ru:'Пока нет площадок.',es:'Aún no hay sitios.',ar:'لا مواقع بعد.'},
+ lotform_title:{he:'מגרש חדש',en:'New lot',ru:'Новая площадка',es:'Nuevo sitio',ar:'موقع جديد'},
+ f_lotname:{he:'שם המגרש *',en:'Lot name *',ru:'Название *',es:'Nombre *',ar:'اسم الموقع *'},
+ f_client:{he:'לקוח',en:'Client',ru:'Клиент',es:'Cliente',ar:'العميل'},
+ f_region:{he:'אזור',en:'Region',ru:'Регион',es:'Región',ar:'المنطقة'},
+ f_address:{he:'כתובת (לניווט)',en:'Address (for navigation)',ru:'Адрес',es:'Dirección',ar:'العنوان'},
+ choose:{he:'— בחר —',en:'— choose —',ru:'— выбрать —',es:'— elegir —',ar:'— اختر —'},
+ r_north:{he:'צפון',en:'North',ru:'Север',es:'Norte',ar:'الشمال'},
+ r_haifa:{he:'חיפה והצפון',en:'Haifa',ru:'Хайфа',es:'Haifa',ar:'حيفا'},
+ r_sharon:{he:'שרון',en:'Sharon',ru:'Шарон',es:'Sharon',ar:'شارون'},
+ r_center:{he:'מרכז',en:'Center',ru:'Центр',es:'Centro',ar:'المركز'},
+ r_jlm:{he:'ירושלים',en:'Jerusalem',ru:'Иерусалим',es:'Jerusalén',ar:'القدس'},
+ r_south:{he:'דרום',en:'South',ru:'Юг',es:'Sur',ar:'الجنوب'},
+ btn_save_lot:{he:'שמור מגרש',en:'Save lot',ru:'Сохранить',es:'Guardar',ar:'حفظ الموقع'},
+ toast_lot_added:{he:'המגרש נוסף',en:'Lot added',ru:'Добавлено',es:'Añadido',ar:'تمت الإضافة'},
+ err_no_lotname:{he:'חסר שם מגרש',en:'Missing lot name',ru:'Нет названия',es:'Falta nombre',ar:'الاسم مفقود'},
+ assign_title:{he:'שיבוץ צוות',en:'Assign team',ru:'Назначить бригаду',es:'Asignar equipo',ar:'تعيين فريق'},
+ f_date:{he:'תאריך',en:'Date',ru:'Дата',es:'Fecha',ar:'التاريخ'},
+ choose_lot:{he:'— בחר מגרש —',en:'— choose lot —',ru:'— выбрать —',es:'— elegir sitio —',ar:'— اختر موقعًا —'},
+ choose_team:{he:'בחר עובד/ים לצוות (1–5):',en:'Choose team members (1–5):',ru:'Выберите бригаду (1–5):',es:'Elige el equipo (1–5):',ar:'اختر الفريق (١–٥):'},
+ no_emps_add:{he:'אין עובדים. הוסף עובדים במסך “עובדים”.',en:'No staff. Add them in the Staff screen.',ru:'Нет работников.',es:'Sin personal.',ar:'لا موظفين.'},
+ btn_assign:{he:'שבץ',en:'Assign',ru:'Назначить',es:'Asignar',ar:'تعيين'},
+ err_assign:{he:'בחר תאריך, מגרש ולפחות עובד אחד',en:'Pick date, lot and at least one worker',ru:'Выберите дату, площадку и работника',es:'Elige fecha, sitio y un trabajador',ar:'اختر التاريخ والموقع وعاملًا'},
+ toast_assigned:{he:'שובצו בהצלחה',en:'assigned',ru:'назначено',es:'asignados',ar:'تم التعيين'},
+ emps_title:{he:'עובדים',en:'Staff',ru:'Работники',es:'Personal',ar:'الموظفون'},
+ emps_note:{he:'הוספת עובד חדש מתוך האפליקציה תופעל בשלב הבא (דרך פונקציית השרת המאובטחת). כרגע מוצגים העובדים הקיימים.',en:'In-app add-employee is coming next (secure server function). Existing staff shown for now.',ru:'Добавление работника появится позже.',es:'Añadir empleado llegará luego.',ar:'إضافة موظف ستتوفر لاحقًا.'},
+ active:{he:'פעיל',en:'Active',ru:'Активен',es:'Activo',ar:'نشط'},
+ emps_empty:{he:'אין עובדים עדיין.',en:'No staff yet.',ru:'Пока нет.',es:'Aún no hay.',ar:'لا موظفين بعد.'},
+ reports_title:{he:'דוחות והנהלת חשבונות',en:'Reports',ru:'Отчёты',es:'Informes',ar:'التقارير'},
+ f_from:{he:'מתאריך',en:'From',ru:'С',es:'Desde',ar:'من'},
+ f_to:{he:'עד תאריך',en:'To',ru:'По',es:'Hasta',ar:'إلى'},
+ q_week:{he:'שבוע',en:'Week',ru:'Неделя',es:'Semana',ar:'أسبوع'},
+ q_month:{he:'חודש',en:'Month',ru:'Месяц',es:'Mes',ar:'شهر'},
+ rep_by_lot:{he:'לפי מגרש',en:'By lot',ru:'По площадкам',es:'Por sitio',ar:'حسب الموقع'},
+ rep_by_emp:{he:'לפי עובד',en:'By worker',ru:'По работникам',es:'Por trabajador',ar:'حسب الموظف'},
+ rep_total:{he:'סה״כ',en:'Total',ru:'Итого',es:'Total',ar:'الإجمالي'},
+ u_days:{he:'ימים',en:'days',ru:'дн.',es:'días',ar:'أيام'},
+ emp_cars_note:{he:'ספירת הרכבים היא ברמת המגרש (משותפת לצוות).',en:'Car counts are per-lot (shared by the team).',ru:'Счёт авто — по площадке (общий).',es:'El conteo de autos es por sitio.',ar:'عدّ السيارات لكل موقع (مشترك).'},
+ btn_export:{he:'⤓ ייצוא CSV (אקסל)',en:'⤓ Export CSV (Excel)',ru:'⤓ Экспорт CSV',es:'⤓ Exportar CSV',ar:'⤓ تصدير CSV'},
+ rep_empty:{he:'אין נתונים בטווח שנבחר.',en:'No data in the selected range.',ru:'Нет данных.',es:'Sin datos.',ar:'لا بيانات.'},
+ myday_title:{he:'המשימות שלי',en:'My tasks',ru:'Мои задачи',es:'Mis tareas',ar:'مهامي'},
+ myday_empty:{he:'אין לך משימות מתוזמנות.',en:'No scheduled tasks.',ru:'Нет задач.',es:'Sin tareas.',ar:'لا مهام.'},
+ only_today:{he:'ניתן לדווח רק ביום המשימה',en:"You can report only on the task's own day",ru:'Отмечать можно только в день задачи',es:'Solo puedes reportar el día de la tarea',ar:'يمكن التسجيل في يوم المهمة فقط'},
+ scheduled_for:{he:'מתוזמן ל־',en:'Scheduled for ',ru:'Запланировано на ',es:'Programado para ',ar:'مجدول لـ '},
+ btn_nav:{he:'🧭 נווט למקום',en:'🧭 Navigate',ru:'🧭 Маршрут',es:'🧭 Navegar',ar:'🧭 التنقل'},
+ btn_waze:{he:'פתח ב‑Waze',en:'Open in Waze',ru:'Открыть в Waze',es:'Abrir en Waze',ar:'افتح في Waze'},
+ btn_arrived:{he:'📍 הגעתי למקום',en:"📍 I've arrived",ru:'📍 Я на месте',es:'📍 He llegado',ar:'📍 لقد وصلت'},
+ arrived_at:{he:'הגעת ב־',en:'Arrived ',ru:'Прибытие ',es:'Llegada ',ar:'وصلت '},
+ btn_finish:{he:'🏁 סיום ודיווח',en:'🏁 Finish & report',ru:'🏁 Завершить',es:'🏁 Terminar',ar:'🏁 إنهاء وتقرير'},
+ finished_at:{he:'סיימת ב־',en:'Finished ',ru:'Завершено ',es:'Terminado ',ar:'انتهيت '},
+ reading_loc:{he:'קורא מיקום…',en:'Reading location…',ru:'Определяю…',es:'Ubicando…',ar:'جارٍ تحديد الموقع…'},
+ toast_arrived:{he:'נרשמה הגעה',en:'Arrival recorded',ru:'Прибытие записано',es:'Llegada registrada',ar:'تم تسجيل الوصول'},
+ finish_title:{he:'סיום',en:'Finish',ru:'Завершение',es:'Terminar',ar:'إنهاء'},
+ f_photo:{he:'צילום המסמך (טופס המגרש) *',en:'Photo of the document (lot form) *',ru:'Фото документа *',es:'Foto del documento *',ar:'صورة المستند *'},
+ f_cars:{he:'כמות רכבים שנשטפו',en:'Cars washed',ru:'Вымыто авто',es:'Autos lavados',ar:'السيارات المغسولة'},
+ f_preps:{he:'כמות הכנות למכירה',en:'Prep-for-sale count',ru:'Подготовок к продаже',es:'Preparaciones',ar:'تحضيرات للبيع'},
+ f_note:{he:'הערה / תקלה (לא חובה)',en:'Note / issue (optional)',ru:'Заметка (необяз.)',es:'Nota (opcional)',ar:'ملاحظة (اختياري)'},
+ f_note_ph:{he:'למשל: רכב הגיע פגוע',en:'e.g. a car arrived damaged',ru:'напр.: авто с повреждением',es:'p. ej. auto dañado',ar:'مثال: سيارة متضررة'},
+ btn_send_finish:{he:'שלח דיווח וסיים',en:'Send report & finish',ru:'Отправить и завершить',es:'Enviar y terminar',ar:'إرسال وإنهاء'},
+ err_photo:{he:'חובה לצלם את המסמך',en:'You must photograph the document',ru:'Нужно фото документа',es:'Debes fotografiar el documento',ar:'يجب تصوير المستند'},
+ sending:{he:'שולח…',en:'Sending…',ru:'Отправка…',es:'Enviando…',ar:'جارٍ الإرسال…'},
+ toast_sent:{he:'הדיווח נשלח ✓',en:'Report sent ✓',ru:'Отчёт отправлен ✓',es:'Informe enviado ✓',ar:'تم إرسال التقرير ✓'},
+ err_generic:{he:'שגיאה: ',en:'Error: ',ru:'Ошибка: ',es:'Error: ',ar:'خطأ: '},
+ doc_fail:{he:'לא ניתן לפתוח את המסמך',en:"Can't open the document",ru:'Не открыть документ',es:'No se puede abrir',ar:'تعذّر فتح المستند'},
+ loading_err:{he:'שגיאה בטעינה.',en:'Loading error.',ru:'Ошибка загрузки.',es:'Error de carga.',ar:'خطأ في التحميل.'},
+ settings_title:{he:'הגדרות',en:'Settings',ru:'Настройки',es:'Ajustes',ar:'الإعدادات'},
+ set_user:{he:'משתמש',en:'User',ru:'Пользователь',es:'Usuario',ar:'المستخدم'},
+ set_role:{he:'תפקיד',en:'Role',ru:'Роль',es:'Rol',ar:'الدور'},
+ set_theme:{he:'מצב תצוגה',en:'Theme',ru:'Тема',es:'Tema',ar:'المظهر'},
+ theme_dark:{he:'לילה',en:'Dark',ru:'Тёмная',es:'Oscuro',ar:'ليلي'},
+ theme_light:{he:'יום',en:'Light',ru:'Светлая',es:'Claro',ar:'نهاري'},
+ set_lang:{he:'שפה',en:'Language',ru:'Язык',es:'Idioma',ar:'اللغة'},
+ btn_logout:{he:'התנתק',en:'Log out',ru:'Выйти',es:'Cerrar sesión',ar:'تسجيل الخروج'},
+ about_open:{he:'אודות האפליקציה',en:'About',ru:'О приложении',es:'Acerca de',ar:'حول التطبيق'},
+ about_title:{he:'אודות',en:'About',ru:'О приложении',es:'Acerca de',ar:'حول'},
+ about_type_lbl:{he:'סוג האפליקציה',en:'App type',ru:'Тип',es:'Tipo',ar:'النوع'},
+ about_type_val:{he:'ניהול עובדים בשטיפת רכבים',en:'Car-wash field staff management',ru:'Управление персоналом автомойки',es:'Gestión de personal de lavado',ar:'إدارة موظفي غسيل السيارات'},
+ about_dev_lbl:{he:'מפתח',en:'Developer',ru:'Разработчик',es:'Desarrollador',ar:'المطور'},
+ about_ver_lbl:{he:'גרסה',en:'Version',ru:'Версия',es:'Versión',ar:'الإصدار'},
+ about_plat_lbl:{he:'פלטפורמה',en:'Platform',ru:'Платформа',es:'Plataforma',ar:'المنصة'},
+ about_plat_val:{he:'ענן · סנכרון בזמן אמת',en:'Cloud · real-time sync',ru:'Облако · синхронизация',es:'Nube · tiempo real',ar:'سحابة · مزامنة فورية'},
+ about_desc:{he:'ניהול צוותי שטיפה בשטח: סידור עבודה, דיווח נוכחות עם מיקום ותיעוד רכבים.',en:'Manage field wash teams: scheduling, GPS check-in and vehicle reporting.',ru:'Выездные бригады: расписание, отметка с GPS и учёт авто.',es:'Equipos de lavado: horarios, fichaje GPS y registro de autos.',ar:'فرق الغسيل الميدانية: الجدولة وتسجيل الحضور بالموقع وتوثيق السيارات.'}
+};
+let LANG=localStorage.getItem('cw_lang')||'he';
+let THEME=localStorage.getItem('cw_theme')||'dark';
+function T(k){ const e=DICT[k]; if(!e) return k; return e[LANG]||e.en||k; }
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.documentElement.dir=RTL.includes(LANG)?'rtl':'ltr';
+  document.querySelectorAll('[data-t]').forEach(n=>n.textContent=T(n.dataset.t));
+  document.querySelectorAll('[data-tph]').forEach(n=>n.placeholder=T(n.dataset.tph));
+}
+function applyTheme(){
+  document.documentElement.dataset.theme=THEME==='light'?'light':'';
+  document.querySelectorAll('#hTheme,#lgTheme').forEach(b=>b.textContent=THEME==='light'?'☀️':'🌙');
+  const tc=document.querySelector('meta[name=theme-color]'); if(tc) tc.content=THEME==='light'?'#f4f2ec':'#0a0a0b';
+}
+function toggleTheme(){ THEME=THEME==='light'?'dark':'light'; localStorage.setItem('cw_theme',THEME); applyTheme(); }
+function langMenu(){
+  const m=el('<div><h3>'+T('set_lang')+'</h3><div id="ll"></div></div>');
+  const back=openModal(m); const wrap=m.querySelector('#ll');
+  LANGS.forEach(([code,label])=>{
+    const r=el(`<div class="langrow ${code===LANG?'active':''}"><span style="font-size:20px">${code===LANG?'✓':'　'}</span><span>${label}</span></div>`);
+    r.onclick=()=>{ LANG=code; localStorage.setItem('cw_lang',LANG); back.remove(); applyLang(); if(ME){ buildNav(); render(); } };
+    wrap.appendChild(r);
+  });
+}
 
 /* ================= STATE ================= */
-let ME = null;            // { id, full_name, role }
-let CURRENT = 'dash';     // current screen
-let SEL_DATE = todayStr();
+let ME=null, CURRENT='dash', SEL_DATE=todayStr();
 
 /* ================= HELPERS ================= */
-function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
-function fmtDate(s){ if(!s) return ''; const [y,m,d]=s.split('-'); return `${d}/${m}`; }
-function fmtTime(ts){ if(!ts) return ''; return new Date(ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
-function isManager(role){ return ['owner','manager','accountant'].includes(role); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(s){ if(!s) return ''; const[y,m,d]=s.split('-'); return `${d}/${m}`; }
+function fmtTime(ts){ if(!ts) return ''; return new Date(ts).toLocaleTimeString(LANG==='he'?'he-IL':LANG,{hour:'2-digit',minute:'2-digit'}); }
+function isManager(r){ return ['owner','manager','accountant'].includes(r); }
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function shiftDate(s,n){ const d=new Date(s); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 
-function getGPS(){
-  return new Promise((res)=>{
-    if(!navigator.geolocation){ res(null); return; }
-    navigator.geolocation.getCurrentPosition(
-      p=>res({lat:+p.coords.latitude.toFixed(6), lng:+p.coords.longitude.toFixed(6)}),
-      ()=>res(null), {enableHighAccuracy:true, timeout:10000, maximumAge:0}
-    );
-  });
-}
-function navUrl(lot){
-  if(lot.lat && lot.lng) return `https://www.google.com/maps/dir/?api=1&destination=${lot.lat},${lot.lng}`;
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lot.address||lot.name)}`;
-}
-function wazeUrl(lot){
-  if(lot.lat && lot.lng) return `https://waze.com/ul?ll=${lot.lat},${lot.lng}&navigate=yes`;
-  return `https://waze.com/ul?q=${encodeURIComponent(lot.address||lot.name)}`;
-}
+function getGPS(){ return new Promise(res=>{
+  if(!navigator.geolocation){ res(null); return; }
+  navigator.geolocation.getCurrentPosition(
+    p=>res({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6)}),
+    ()=>res(null),{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+});}
+function navUrl(l){ return l.lat&&l.lng?`https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}`:`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(l.address||l.name)}`; }
+function wazeUrl(l){ return l.lat&&l.lng?`https://waze.com/ul?ll=${l.lat},${l.lng}&navigate=yes`:`https://waze.com/ul?q=${encodeURIComponent(l.address||l.name)}`; }
 
-/* compress an image File to a jpeg Blob */
-function compressImage(file, maxDim=1600, quality=0.7){
-  return new Promise((resolve,reject)=>{
-    const img=new Image(); const url=URL.createObjectURL(file);
-    img.onload=()=>{
-      let {width:w,height:h}=img;
-      if(w>h && w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; }
-      else if(h>=w && h>maxDim){ w=Math.round(w*maxDim/h); h=maxDim; }
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      c.getContext('2d').drawImage(img,0,0,w,h);
-      URL.revokeObjectURL(url);
-      c.toBlob(b=> b?resolve(b):reject(new Error('compress failed')),'image/jpeg',quality);
-    };
-    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('bad image')); };
-    img.src=url;
-  });
-}
+function compressImage(file,maxDim=1600,q=0.7){ return new Promise((resolve,reject)=>{
+  const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{ let{width:w,height:h}=img;
+    if(w>h&&w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;} else if(h>=w&&h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}
+    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url); c.toBlob(b=>b?resolve(b):reject(new Error('compress')),'image/jpeg',q); };
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('img'));}; img.src=url;
+});}
 
-/* status of an assignment given whether a lot report exists that day */
-function statusOf(a, hasReport){
-  if(a.finished_at) return hasReport ? ['s-green','הושלם'] : ['s-amber','סיים · חסר דיווח'];
-  if(a.arrived_at)  return ['s-blue','בעבודה'];
-  if(a.work_date < todayStr()) return ['s-red','לא בוצע'];
-  return ['s-grey','מתוזמן'];
+function statusOf(a,hasReport){
+  if(a.finished_at) return hasReport?['s-green',T('st_done')]:['s-amber',T('st_missing')];
+  if(a.arrived_at) return ['s-blue',T('st_working')];
+  if(a.work_date<todayStr()) return ['s-red',T('st_notdone')];
+  return ['s-grey',T('st_scheduled')];
 }
+function roleLabel(r){ return T('role_'+r); }
 
 /* ================= MODAL ================= */
 function openModal(inner){
   const back=el(`<div class="modal-back"><div class="modal"><div class="grab"></div></div></div>`);
   back.querySelector('.modal').appendChild(inner);
   back.addEventListener('click',e=>{ if(e.target===back) back.remove(); });
-  document.getElementById('modalRoot').appendChild(back);
-  return back;
+  document.getElementById('modalRoot').appendChild(back); return back;
 }
-function closeModals(){ document.getElementById('modalRoot').innerHTML=''; }
 
 /* ================= AUTH ================= */
-document.getElementById('loginBtn').addEventListener('click', doLogin);
-document.getElementById('loginPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
-
 async function doLogin(){
   const raw=document.getElementById('loginUser').value.trim();
   const pass=document.getElementById('loginPass').value;
-  const errEl=document.getElementById('loginErr');
-  errEl.textContent='';
-  if(!raw||!pass){ errEl.textContent='חסר שם משתמש או סיסמה'; return; }
-  const email = raw.includes('@') ? raw : (raw.toLowerCase()+EMAIL_SUFFIX);
+  const errEl=document.getElementById('loginErr'); errEl.textContent='';
+  if(!raw||!pass){ errEl.textContent=T('err_empty'); return; }
+  const email=raw.includes('@')?raw:(raw.toLowerCase()+EMAIL_SUFFIX);
   const btn=document.getElementById('loginBtn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
-  const { error } = await db.auth.signInWithPassword({ email, password:pass });
-  btn.disabled=false; btn.textContent='כניסה';
-  if(error){ errEl.textContent='שם משתמש או סיסמה שגויים'; return; }
+  const {error}=await db.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false; btn.textContent=T('login_btn');
+  if(error){ errEl.textContent=T('err_bad'); return; }
   await boot();
 }
-
 async function loadMe(){
-  const { data:{ user } } = await db.auth.getUser();
-  if(!user) return null;
-  const { data, error } = await db.from('profiles').select('id,full_name,role').eq('id',user.id).single();
-  if(error||!data){ return { id:user.id, full_name:user.email, role:'employee' }; }
-  return data;
+  const {data:{user}}=await db.auth.getUser(); if(!user) return null;
+  const {data}=await db.from('profiles').select('id,full_name,role').eq('id',user.id).single();
+  return data||{id:user.id,full_name:user.email,role:'employee'};
 }
-
 async function boot(){
-  ME = await loadMe();
-  if(!ME){ showLogin(); return; }
+  ME=await loadMe(); if(!ME){ showLogin(); return; }
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('whoName').textContent = ME.full_name || '';
-  document.getElementById('whoRole').textContent = roleLabel(ME.role);
-  buildNav();
-  CURRENT = isManager(ME.role) ? 'dash' : 'myday';
-  render();
+  buildNav(); CURRENT=isManager(ME.role)?'dash':'myday'; render();
 }
-function roleLabel(r){ return {owner:'בעלים',manager:'מנהל',accountant:'הנהלת חשבונות',employee:'עובד'}[r]||r; }
-
-function showLogin(){
-  document.getElementById('app').classList.add('hidden');
-  document.getElementById('loginScreen').classList.remove('hidden');
-}
+function showLogin(){ document.getElementById('app').classList.add('hidden'); document.getElementById('loginScreen').classList.remove('hidden'); }
 async function logout(){ await db.auth.signOut(); ME=null; location.reload(); }
 
 /* ================= NAV ================= */
 function buildNav(){
   const nav=document.getElementById('nav');
-  const items = isManager(ME.role)
-    ? [['dash','🗂️','לוח'],['lots','📍','מגרשים'],['assign','🗓️','שיבוץ'],['emps','👥','עובדים'],['settings','⚙️','הגדרות']]
-    : [['myday','📋','היום שלי'],['settings','⚙️','הגדרות']];
+  const items=isManager(ME.role)
+    ? [['dash','🗂️','nav_dash'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['reports','📊','nav_reports'],['settings','⚙️','nav_settings']]
+    : [['myday','📋','nav_myday'],['settings','⚙️','nav_settings']];
   nav.innerHTML='';
-  items.forEach(([id,ic,lbl])=>{
-    const b=el(`<button data-id="${id}"><span class="ic">${ic}</span><span>${lbl}</span></button>`);
-    b.addEventListener('click',()=>{ CURRENT=id; render(); });
-    nav.appendChild(b);
-  });
+  items.forEach(([id,ic,k])=>{ const b=el(`<button data-id="${id}"><span class="ic">${ic}</span><span>${T(k)}</span></button>`);
+    b.onclick=()=>{ CURRENT=id; render(); }; nav.appendChild(b); });
 }
 function markNav(){ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.id===CURRENT)); }
 
 /* ================= RENDER ROUTER ================= */
 async function render(){
   markNav();
-  const v=document.getElementById('view');
-  v.innerHTML='<div class="empty"><span class="spin"></span></div>';
+  const v=document.getElementById('view'); v.innerHTML='<div class="empty"><span class="spin"></span></div>';
   try{
-    if(CURRENT==='dash')     await renderDash(v);
-    else if(CURRENT==='lots')  await renderLots(v);
-    else if(CURRENT==='assign')await renderAssign(v);
-    else if(CURRENT==='emps')  await renderEmps(v);
+    if(CURRENT==='dash') await renderDash(v);
+    else if(CURRENT==='lots') await renderLots(v);
+    else if(CURRENT==='assign') await renderAssign(v);
+    else if(CURRENT==='emps') await renderEmps(v);
+    else if(CURRENT==='reports') await renderReports(v);
     else if(CURRENT==='myday') await renderMyDay(v);
     else if(CURRENT==='settings') renderSettings(v);
-  }catch(e){ v.innerHTML=`<div class="empty">שגיאה בטעינה.<br><span class="muted">${esc(e.message||'')}</span></div>`; }
+  }catch(e){ v.innerHTML=`<div class="empty">${T('loading_err')}<br><span class="muted">${esc(e.message||'')}</span></div>`; }
 }
 
 /* ================= MANAGER · DASHBOARD ================= */
 async function renderDash(v){
-  const [{data:asgs},{data:reports}] = await Promise.all([
+  const [{data:asgs},{data:reports}]=await Promise.all([
     db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('work_date',SEL_DATE).order('created_at'),
-    db.from('lot_reports').select('*').eq('work_date',SEL_DATE)
-  ]);
-  const empMap = await employeeMap();
+    db.from('lot_reports').select('*').eq('work_date',SEL_DATE)]);
+  const empMap=await employeeMap();
   const repByLot={}; (reports||[]).forEach(r=>repByLot[r.lot_id]=r);
-  // group assignments by lot
-  const byLot={};
-  (asgs||[]).forEach(a=>{ (byLot[a.lot_id]=byLot[a.lot_id]||{lot:a.lots,rows:[]}).rows.push(a); });
-
-  const redCount=(asgs||[]).filter(a=>!a.finished_at && a.work_date<todayStr()).length;
-
-  v.innerHTML=`
-    <h2 class="screen-title">לוח בקרה</h2>
+  const byLot={}; (asgs||[]).forEach(a=>{ (byLot[a.lot_id]=byLot[a.lot_id]||{lot:a.lots,rows:[]}).rows.push(a); });
+  const redCount=(asgs||[]).filter(a=>!a.finished_at&&a.work_date<todayStr()).length;
+  v.innerHTML=`<h2 class="screen-title">${T('dash_title')}</h2>
     <div class="card row between">
       <button class="btn ghost" style="width:auto" id="prevD">‹</button>
-      <div style="text-align:center"><div style="font-weight:800">${SEL_DATE===todayStr()?'היום':''} ${SEL_DATE}</div>
-        <div class="muted" style="font-size:12px">${(asgs||[]).length} שיבוצים · ${Object.keys(byLot).length} מגרשים</div></div>
-      <button class="btn ghost" style="width:auto" id="nextD">›</button>
-    </div>
-    ${redCount?`<div class="card" style="border-color:rgba(239,68,68,.4)"><span class="pill s-red">${redCount} משימות לא בוצעו</span></div>`:''}
+      <div style="text-align:center"><div style="font-weight:800">${SEL_DATE===todayStr()?T('today')+' · ':''}${SEL_DATE}</div>
+        <div class="muted" style="font-size:12px">${(asgs||[]).length} ${T('u_assignments')} · ${Object.keys(byLot).length} ${T('u_lots')}</div></div>
+      <button class="btn ghost" style="width:auto" id="nextD">›</button></div>
+    ${redCount?`<div class="card" style="border-color:rgba(239,68,68,.4)"><span class="pill s-red">${redCount} ${T('red_alert')}</span></div>`:''}
     <div id="lotList"></div>`;
   v.querySelector('#prevD').onclick=()=>{ SEL_DATE=shiftDate(SEL_DATE,-1); render(); };
   v.querySelector('#nextD').onclick=()=>{ SEL_DATE=shiftDate(SEL_DATE,1); render(); };
-
   const list=v.querySelector('#lotList');
-  if(!Object.keys(byLot).length){ list.innerHTML='<div class="empty">אין שיבוצים לתאריך הזה.<br>עבור ל“שיבוץ” כדי לתזמן צוות.</div>'; return; }
-
+  if(!Object.keys(byLot).length){ list.innerHTML=`<div class="empty">${T('dash_empty')}</div>`; return; }
   for(const lotId in byLot){
-    const {lot,rows}=byLot[lotId];
-    const rep=repByLot[lotId];
-    const c=el(`<div class="card"></div>`);
-    c.innerHTML=`
-      <div class="row between"><h3 style="margin:0">${esc(lot?.name||'מגרש')}</h3>
-        <span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span></div>
+    const {lot,rows}=byLot[lotId], rep=repByLot[lotId];
+    const c=el('<div class="card"></div>');
+    c.innerHTML=`<div class="row between"><h3 style="margin:0">${esc(lot?.name||'')}</h3><span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span></div>
       <div class="stack" style="margin-top:8px">
-        ${rows.map(a=>{ const [cls,txt]=statusOf(a,!!rep);
-          return `<div class="row between"><span>${esc(empMap[a.employee_id]||'עובד')}</span>
-            <span class="row" style="gap:8px">
-              ${a.arrived_at?`<span class="muted" style="font-size:11px">${fmtTime(a.arrived_at)}${a.finished_at?'–'+fmtTime(a.finished_at):''}</span>`:''}
-              <span class="pill ${cls}">${txt}</span></span></div>`;
-        }).join('')}
+        ${rows.map(a=>{ const[cls,txt]=statusOf(a,!!rep);
+          return `<div class="row between"><span>${esc(empMap[a.employee_id]||T('role_employee'))}</span>
+            <span class="row" style="gap:8px">${a.arrived_at?`<span class="muted" style="font-size:11px">${fmtTime(a.arrived_at)}${a.finished_at?'–'+fmtTime(a.finished_at):''}</span>`:''}
+            <span class="pill ${cls}">${txt}</span></span></div>`; }).join('')}
       </div>
-      ${rep?`<div class="row between" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-          <span>🚗 ${rep.cars_washed} רכבים · ✨ ${rep.preps} הכנות</span>
-          ${rep.photo_path?`<button class="btn ghost" style="width:auto" data-photo="${esc(rep.photo_path)}">📄 מסמך</button>`:''}
-        </div>`:''}`;
-    const pb=c.querySelector('[data-photo]');
-    if(pb) pb.onclick=()=>viewPhoto(pb.dataset.photo);
+      ${rep?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+        <div class="row between"><span>🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}</span>
+        ${rep.photo_path?`<button class="btn ghost" style="width:auto" data-photo="${esc(rep.photo_path)}">📄 ${T('btn_doc')}</button>`:''}</div>
+        ${rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`:''}`;
+    const pb=c.querySelector('[data-photo]'); if(pb) pb.onclick=()=>viewPhoto(pb.dataset.photo,rep.note);
     list.appendChild(c);
   }
 }
-function shiftDate(s,days){ const d=new Date(s); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
-
-async function viewPhoto(path){
-  const { data, error } = await db.storage.from('documents').createSignedUrl(path,3600);
-  if(error){ toast('לא ניתן לפתוח את המסמך'); return; }
-  const m=el(`<div><h3>מסמך המגרש</h3><img class="thumb" src="${data.signedUrl}"/><button class="btn ghost" style="margin-top:12px" id="cl">סגור</button></div>`);
+async function viewPhoto(path,note){
+  const {data,error}=await db.storage.from('documents').createSignedUrl(path,3600);
+  if(error){ toast(T('doc_fail')); return; }
+  const m=el(`<div><h3>${T('btn_doc')}</h3><img class="thumb" src="${data.signedUrl}"/>${note?`<p class="muted" style="margin-top:10px">📝 ${esc(note)}</p>`:''}<button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
   const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
 }
 
 /* ================= MANAGER · LOTS ================= */
 async function renderLots(v){
   const {data:lots}=await db.from('lots').select('*').order('name');
-  v.innerHTML=`<h2 class="screen-title">מגרשים</h2>
-    <button class="btn gold" id="addLot" style="margin-bottom:14px">＋ הוסף מגרש</button>
-    <div id="lotCards"></div>`;
+  v.innerHTML=`<h2 class="screen-title">${T('lots_title')}</h2>
+    <button class="btn gold" id="addLot" style="margin-bottom:14px">${T('btn_add_lot')}</button><div id="lotCards"></div>`;
   v.querySelector('#addLot').onclick=lotForm;
   const wrap=v.querySelector('#lotCards');
-  if(!lots?.length){ wrap.innerHTML='<div class="empty">עדיין אין מגרשים. הוסף את הראשון.</div>'; return; }
-  lots.forEach(l=>{
-    const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l.name)}</h3>
-      <span class="muted" style="font-size:12px">${esc(l.region||'')}</span></div>
-      <div class="muted" style="font-size:13px;margin-top:4px">${esc(l.client_name||'')} ${l.address?'· '+esc(l.address):''}</div></div>`);
-    wrap.appendChild(c);
-  });
+  if(!lots?.length){ wrap.innerHTML=`<div class="empty">${T('lots_empty')}</div>`; return; }
+  lots.forEach(l=>wrap.appendChild(el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l.name)}</h3>
+    <span class="muted" style="font-size:12px">${esc(l.region||'')}</span></div>
+    <div class="muted" style="font-size:13px;margin-top:4px">${esc(l.client_name||'')} ${l.address?'· '+esc(l.address):''}</div></div>`)));
 }
 function lotForm(){
-  const f=el(`<div>
-    <h3>מגרש חדש</h3>
-    <label class="field"><span>שם המגרש *</span><input id="l_name" placeholder="למשל: אלבר ראשל“צ"/></label>
-    <label class="field"><span>לקוח</span><input id="l_client" placeholder="למשל: אלבר"/></label>
-    <label class="field"><span>אזור</span>
-      <select id="l_region"><option value="">— בחר —</option><option>צפון</option><option>חיפה והצפון</option><option>שרון</option><option>מרכז</option><option>ירושלים</option><option>דרום</option></select></label>
-    <label class="field"><span>כתובת (לניווט)</span><input id="l_addr" placeholder="רחוב, עיר"/></label>
-    <button class="btn gold big" id="l_save">שמור מגרש</button>
-  </div>`);
+  const R=[['',T('choose')],['north',T('r_north')],['haifa',T('r_haifa')],['sharon',T('r_sharon')],['center',T('r_center')],['jlm',T('r_jlm')],['south',T('r_south')]];
+  const f=el(`<div><h3>${T('lotform_title')}</h3>
+    <label class="field"><span>${T('f_lotname')}</span><input id="l_name"/></label>
+    <label class="field"><span>${T('f_client')}</span><input id="l_client"/></label>
+    <label class="field"><span>${T('f_region')}</span><select id="l_region">${R.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
+    <label class="field"><span>${T('f_address')}</span><input id="l_addr"/></label>
+    <button class="btn gold big" id="l_save">${T('btn_save_lot')}</button></div>`);
   const back=openModal(f);
   f.querySelector('#l_save').onclick=async()=>{
-    const name=f.querySelector('#l_name').value.trim();
-    if(!name){ toast('חסר שם מגרש'); return; }
-    const {error}=await db.from('lots').insert({
-      name, client_name:f.querySelector('#l_client').value.trim(),
-      region:f.querySelector('#l_region').value, address:f.querySelector('#l_addr').value.trim()
-    });
-    if(error){ toast('שגיאה: '+error.message); return; }
-    back.remove(); toast('המגרש נוסף'); render();
+    const name=f.querySelector('#l_name').value.trim(); if(!name){ toast(T('err_no_lotname')); return; }
+    const {error}=await db.from('lots').insert({name,client_name:f.querySelector('#l_client').value.trim(),region:f.querySelector('#l_region').value,address:f.querySelector('#l_addr').value.trim()});
+    if(error){ toast(T('err_generic')+error.message); return; }
+    back.remove(); toast(T('toast_lot_added')); render();
   };
 }
 
 /* ================= MANAGER · ASSIGN ================= */
 async function renderAssign(v){
-  const [{data:lots},emps] = await Promise.all([ db.from('lots').select('*').eq('active',true).order('name'), employeeList() ]);
-  v.innerHTML=`<h2 class="screen-title">שיבוץ צוות</h2>
-    <div class="card">
-      <label class="field"><span>תאריך</span><input type="date" id="a_date" value="${SEL_DATE}"/></label>
-      <label class="field"><span>מגרש</span>
-        <select id="a_lot"><option value="">— בחר מגרש —</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></label>
-      <span class="muted" style="font-size:13px">בחר עובד/ים לצוות (1–5):</span>
-      <div id="a_emps" class="stack" style="margin-top:10px">
-        ${(emps||[]).map(e=>`<label class="row" style="gap:10px;background:var(--surface2);padding:12px;border-radius:12px;border:1px solid var(--line)">
-          <input type="checkbox" style="width:20px;height:20px" value="${e.id}"/> <span>${esc(e.full_name||'עובד')}</span></label>`).join('') || '<div class="muted">אין עובדים. הוסף עובדים במסך “עובדים”.</div>'}
-      </div>
-      <button class="btn gold big" id="a_save" style="margin-top:14px">שבץ</button>
-    </div>`;
+  const [{data:lots},emps]=await Promise.all([db.from('lots').select('*').eq('active',true).order('name'),employeeList()]);
+  v.innerHTML=`<h2 class="screen-title">${T('assign_title')}</h2><div class="card">
+    <label class="field"><span>${T('f_date')}</span><input type="date" id="a_date" value="${SEL_DATE}"/></label>
+    <label class="field"><span>${T('nav_lots')}</span><select id="a_lot"><option value="">${T('choose_lot')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></label>
+    <span class="muted" style="font-size:13px">${T('choose_team')}</span>
+    <div id="a_emps" class="stack" style="margin-top:10px">${(emps||[]).map(e=>`<label class="row" style="gap:10px;background:var(--surface2);padding:12px;border-radius:12px;border:1px solid var(--line)"><input type="checkbox" style="width:20px;height:20px" value="${e.id}"/> <span>${esc(e.full_name||T('role_employee'))}</span></label>`).join('')||`<div class="muted">${T('no_emps_add')}</div>`}</div>
+    <button class="btn gold big" id="a_save" style="margin-top:14px">${T('btn_assign')}</button></div>`;
   v.querySelector('#a_save').onclick=async()=>{
-    const date=v.querySelector('#a_date').value, lot=v.querySelector('#a_lot').value;
+    const date=v.querySelector('#a_date').value,lot=v.querySelector('#a_lot').value;
     const chosen=[...v.querySelectorAll('#a_emps input:checked')].map(i=>i.value);
-    if(!date||!lot||!chosen.length){ toast('בחר תאריך, מגרש ולפחות עובד אחד'); return; }
-    const rows=chosen.map(eid=>({lot_id:lot,employee_id:eid,work_date:date,created_by:ME.id}));
-    const {error}=await db.from('assignments').insert(rows);
-    if(error){ toast('שגיאה: '+error.message); return; }
-    toast(`${chosen.length} שובצו בהצלחה`); SEL_DATE=date; CURRENT='dash'; render();
+    if(!date||!lot||!chosen.length){ toast(T('err_assign')); return; }
+    const {error}=await db.from('assignments').insert(chosen.map(eid=>({lot_id:lot,employee_id:eid,work_date:date,created_by:ME.id})));
+    if(error){ toast(T('err_generic')+error.message); return; }
+    toast(`${chosen.length} ${T('toast_assigned')}`); SEL_DATE=date; CURRENT='dash'; render();
   };
 }
 
-/* ================= MANAGER · EMPLOYEES ================= */
+/* ================= EMPLOYEES helpers ================= */
+async function employeeList(){ const {data}=await db.from('profiles').select('id,full_name').eq('role','employee').eq('active',true).order('full_name'); return data||[]; }
+async function employeeMap(){ const l=await employeeList(); const m={}; l.forEach(e=>m[e.id]=e.full_name); return m; }
 async function renderEmps(v){
   const emps=await employeeList();
-  v.innerHTML=`<h2 class="screen-title">עובדים</h2>
-    <div class="card" style="border-color:rgba(212,175,55,.35)">
-      <div class="muted" style="font-size:13px">הוספת עובד חדש מתוך האפליקציה תופעל בשלב הבא (דרך פונקציית השרת המאובטחת). כרגע מוצגים העובדים הקיימים.</div>
-    </div>
-    <div class="stack">
-      ${(emps||[]).map(e=>`<div class="card row between" style="margin:0"><span>${esc(e.full_name||'עובד')}</span><span class="pill s-green">פעיל</span></div>`).join('') || '<div class="empty">אין עובדים עדיין.</div>'}
-    </div>`;
+  v.innerHTML=`<h2 class="screen-title">${T('emps_title')}</h2>
+    <div class="card" style="border-color:rgba(212,175,55,.35)"><div class="muted" style="font-size:13px">${T('emps_note')}</div></div>
+    <div class="stack">${(emps||[]).map(e=>`<div class="card row between" style="margin:0"><span>${esc(e.full_name||T('role_employee'))}</span><span class="pill s-green">${T('active')}</span></div>`).join('')||`<div class="empty">${T('emps_empty')}</div>`}</div>`;
 }
 
-/* helpers for employees */
-async function employeeList(){ const {data}=await db.from('profiles').select('id,full_name').eq('role','employee').eq('active',true).order('full_name'); return data||[]; }
-async function employeeMap(){ const list=await employeeList(); const m={}; list.forEach(e=>m[e.id]=e.full_name); return m; }
+/* ================= MANAGER · REPORTS ================= */
+let REP_FROM=todayStr(), REP_TO=todayStr();
+async function renderReports(v){
+  const [{data:reports},{data:asgs},empMap]=await Promise.all([
+    db.from('lot_reports').select('*, lots(name,client_name)').gte('work_date',REP_FROM).lte('work_date',REP_TO),
+    db.from('assignments').select('employee_id,lot_id,work_date,finished_at').gte('work_date',REP_FROM).lte('work_date',REP_TO),
+    employeeMap()]);
+  const byLot={},byEmp={}; let totCars=0,totPreps=0;
+  (reports||[]).forEach(r=>{ const k=r.lot_id; (byLot[k]=byLot[k]||{name:r.lots?.name||'',cars:0,preps:0,days:new Set()});
+    byLot[k].cars+=r.cars_washed; byLot[k].preps+=r.preps; byLot[k].days.add(r.work_date); totCars+=r.cars_washed; totPreps+=r.preps; });
+  (asgs||[]).forEach(a=>{ if(!a.finished_at) return; (byEmp[a.employee_id]=byEmp[a.employee_id]||{days:new Set(),lots:new Set()});
+    byEmp[a.employee_id].days.add(a.work_date); byEmp[a.employee_id].lots.add(a.lot_id); });
+
+  v.innerHTML=`<h2 class="screen-title">${T('reports_title')}</h2>
+   <div class="card">
+     <div class="row" style="gap:8px"><label class="field" style="flex:1;margin:0"><span>${T('f_from')}</span><input type="date" id="r_from" value="${REP_FROM}"/></label>
+       <label class="field" style="flex:1;margin:0"><span>${T('f_to')}</span><input type="date" id="r_to" value="${REP_TO}"/></label></div>
+     <div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost" id="q_today">${T('today')}</button><button class="btn ghost" id="q_week">${T('q_week')}</button><button class="btn ghost" id="q_month">${T('q_month')}</button></div>
+   </div>
+   <div class="card"><div class="row between"><span style="font-weight:800">${T('rep_total')}</span><span style="font-weight:800">🚗 ${totCars} · ✨ ${totPreps}</span></div></div>
+   <div class="card"><h3>${T('rep_by_lot')}</h3>${Object.keys(byLot).length?Object.values(byLot).map(l=>`<div class="row between" style="padding:6px 0"><span>${esc(l.name)} <span class="muted" style="font-size:12px">(${l.days.size} ${T('u_days')})</span></span><span>🚗 ${l.cars} · ✨ ${l.preps}</span></div>`).join(''):`<div class="muted">${T('rep_empty')}</div>`}</div>
+   <div class="card"><h3>${T('rep_by_emp')}</h3>${Object.keys(byEmp).length?Object.entries(byEmp).map(([id,e])=>`<div class="row between" style="padding:6px 0"><span>${esc(empMap[id]||T('role_employee'))}</span><span class="muted" style="font-size:13px">${e.days.size} ${T('u_days')} · ${e.lots.size} ${T('u_lots')}</span></div>`).join(''):`<div class="muted">${T('rep_empty')}</div>`}<div class="muted" style="font-size:11px;margin-top:8px">${T('emp_cars_note')}</div></div>
+   <button class="btn gold" id="r_csv">${T('btn_export')}</button>`;
+  const rerun=()=>{ REP_FROM=v.querySelector('#r_from').value; REP_TO=v.querySelector('#r_to').value; render(); };
+  v.querySelector('#r_from').onchange=rerun; v.querySelector('#r_to').onchange=rerun;
+  v.querySelector('#q_today').onclick=()=>{ REP_FROM=REP_TO=todayStr(); render(); };
+  v.querySelector('#q_week').onclick=()=>{ REP_TO=todayStr(); REP_FROM=shiftDate(todayStr(),-6); render(); };
+  v.querySelector('#q_month').onclick=()=>{ REP_TO=todayStr(); REP_FROM=shiftDate(todayStr(),-29); render(); };
+  v.querySelector('#r_csv').onclick=()=>exportCSV(reports||[],empMap);
+}
+function exportCSV(reports,empMap){
+  const head=['date','lot','client','cars_washed','preps','submitted_by','note'];
+  const rows=reports.map(r=>[r.work_date,r.lots?.name||'',r.lots?.client_name||'',r.cars_washed,r.preps,empMap[r.submitted_by]||'',(r.note||'').replace(/\n/g,' ')]);
+  const csv='\uFEFF'+[head,...rows].map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`carwash_${REP_FROM}_${REP_TO}.csv`; a.click(); URL.revokeObjectURL(url);
+}
 
 /* ================= EMPLOYEE · MY DAY ================= */
 async function renderMyDay(v){
-  const {data:asgs}=await db.from('assignments')
-    .select('*, lots(name,address,region,lat,lng)')
-    .eq('employee_id',ME.id).gte('work_date',todayStr()).order('work_date').order('created_at');
-  // check which of my lots+dates already have a report
-  const dates=[...new Set((asgs||[]).map(a=>a.work_date))];
-  let reports=[];
+  const {data:asgs}=await db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('employee_id',ME.id).gte('work_date',todayStr()).order('work_date').order('created_at');
+  const dates=[...new Set((asgs||[]).map(a=>a.work_date))]; let reports=[];
   if(dates.length){ const {data}=await db.from('lot_reports').select('lot_id,work_date').in('work_date',dates); reports=data||[]; }
-  const hasRep=(a)=>reports.some(r=>r.lot_id===a.lot_id && r.work_date===a.work_date);
-
-  v.innerHTML=`<h2 class="screen-title">המשימות שלי</h2><div id="jobs" class="stack"></div>`;
+  const hasRep=a=>reports.some(r=>r.lot_id===a.lot_id&&r.work_date===a.work_date);
+  v.innerHTML=`<h2 class="screen-title">${T('myday_title')}</h2><div id="jobs" class="stack"></div>`;
   const wrap=v.querySelector('#jobs');
-  if(!asgs?.length){ wrap.innerHTML='<div class="empty">אין לך משימות מתוזמנות.</div>'; return; }
-  asgs.forEach(a=>{
-    const [cls,txt]=statusOf(a,hasRep(a));
-    const c=el(`<div class="card">
-      <div class="row between"><h3 style="margin:0">${esc(a.lots?.name||'מגרש')}</h3><span class="pill ${cls}">${txt}</span></div>
-      <div class="muted" style="font-size:13px;margin-top:4px">${a.work_date===todayStr()?'היום':fmtDate(a.work_date)} · ${esc(a.lots?.address||a.lots?.region||'')}</div>
-    </div>`);
-    c.style.cursor='pointer';
-    c.onclick=()=>jobModal(a);
-    wrap.appendChild(c);
+  if(!asgs?.length){ wrap.innerHTML=`<div class="empty">${T('myday_empty')}</div>`; return; }
+  asgs.forEach(a=>{ const[cls,txt]=statusOf(a,hasRep(a)); const isToday=a.work_date===todayStr();
+    const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(a.lots?.name||'')}</h3><span class="pill ${cls}">${txt}</span></div>
+      <div class="muted" style="font-size:13px;margin-top:4px">${isToday?T('today'):T('scheduled_for')+fmtDate(a.work_date)} · ${esc(a.lots?.address||a.lots?.region||'')}</div>
+      ${!isToday?`<div class="muted" style="font-size:12px;margin-top:6px">🔒 ${T('only_today')}</div>`:''}</div>`);
+    c.style.cursor='pointer'; c.onclick=()=>jobModal(a,isToday); wrap.appendChild(c);
   });
 }
-
-function jobModal(a){
-  const lot=a.lots||{};
-  const arrived=!!a.arrived_at, finished=!!a.finished_at;
-  const m=el(`<div>
-    <h3>${esc(lot.name||'מגרש')}</h3>
-    <div class="muted" style="margin-bottom:14px">${esc(lot.address||lot.region||'')}</div>
+function jobModal(a,isToday){
+  const lot=a.lots||{}, arrived=!!a.arrived_at, finished=!!a.finished_at;
+  const canArrive=isToday&&!arrived, canFinish=isToday&&arrived&&!finished;
+  const m=el(`<div><h3>${esc(lot.name||'')}</h3><div class="muted" style="margin-bottom:14px">${esc(lot.address||lot.region||'')}</div>
+    ${!isToday?`<div class="card" style="border-color:rgba(245,158,11,.4);text-align:center">🔒 ${T('only_today')}</div>`:''}
     <div class="stack">
-      <button class="btn big" id="nav">🧭 נווט למקום</button>
-      <a class="btn ghost" id="waze" target="_blank" rel="noopener">פתח ב‑Waze</a>
-      <button class="btn ${arrived?'ghost':'gold'} big" id="arrive" ${arrived?'disabled':''}>
-        ${arrived?`✓ הגעת ב‑${fmtTime(a.arrived_at)}`:'📍 הגעתי למקום'}</button>
-      <button class="btn ${finished?'ghost':'gold'} big" id="finish" ${(!arrived||finished)?'disabled':''}>
-        ${finished?`✓ סיימת ב‑${fmtTime(a.finished_at)}`:'🏁 סיום ודיווח'}</button>
-    </div>
-  </div>`);
+      <button class="btn big" id="nav">${T('btn_nav')}</button>
+      <a class="btn ghost" id="waze" target="_blank" rel="noopener">${T('btn_waze')}</a>
+      <button class="btn ${canArrive?'gold':'ghost'} big" id="arrive" ${canArrive?'':'disabled'}>${arrived?'✓ '+T('arrived_at')+fmtTime(a.arrived_at):T('btn_arrived')}</button>
+      <button class="btn ${canFinish?'gold':'ghost'} big" id="finish" ${canFinish?'':'disabled'}>${finished?'✓ '+T('finished_at')+fmtTime(a.finished_at):T('btn_finish')}</button>
+    </div></div>`);
   const back=openModal(m);
   m.querySelector('#nav').onclick=()=>window.open(navUrl(lot),'_blank');
   m.querySelector('#waze').href=wazeUrl(lot);
-  m.querySelector('#arrive').onclick=async(e)=>{
-    const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> קורא מיקום…';
-    const g=await getGPS();
-    const {error}=await db.from('assignments').update({arrived_at:new Date().toISOString(),arrived_lat:g?.lat,arrived_lng:g?.lng}).eq('id',a.id);
-    if(error){ toast('שגיאה: '+error.message); btn.disabled=false; btn.textContent='📍 הגעתי למקום'; return; }
-    toast('נרשמה הגעה'); back.remove(); render();
-  };
-  m.querySelector('#finish').onclick=()=>{ back.remove(); finishForm(a); };
+  if(canArrive) m.querySelector('#arrive').onclick=async(e)=>{ const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('reading_loc');
+    const g=await getGPS(); const {error}=await db.from('assignments').update({arrived_at:new Date().toISOString(),arrived_lat:g?.lat,arrived_lng:g?.lng}).eq('id',a.id);
+    if(error){ toast(T('err_generic')+error.message); btn.disabled=false; btn.textContent=T('btn_arrived'); return; }
+    toast(T('toast_arrived')); back.remove(); render(); };
+  if(canFinish) m.querySelector('#finish').onclick=()=>{ back.remove(); finishForm(a); };
 }
-
 function finishForm(a){
-  const f=el(`<div>
-    <h3>סיום · ${esc(a.lots?.name||'מגרש')}</h3>
-    <label class="field"><span>צילום המסמך (טופס המגרש) *</span>
-      <input type="file" id="f_photo" accept="image/*" capture="environment"/></label>
+  const f=el(`<div><h3>${T('finish_title')} · ${esc(a.lots?.name||'')}</h3>
+    <label class="field"><span>${T('f_photo')}</span><input type="file" id="f_photo" accept="image/*" capture="environment"/></label>
     <img id="f_prev" class="thumb hidden"/>
-    <label class="field"><span>כמות רכבים שנשטפו</span>${stepperHTML('f_cars')}</label>
-    <label class="field"><span>כמות הכנות למכירה</span>${stepperHTML('f_preps')}</label>
-    <label class="field"><span>הערה / תקלה (לא חובה)</span><textarea id="f_note" rows="2" placeholder="למשל: רכב הגיע פגוע"></textarea></label>
-    <button class="btn gold big" id="f_save">שלח דיווח וסיים</button>
-  </div>`);
-  const back=openModal(f);
-  bindStepper(f,'f_cars'); bindStepper(f,'f_preps');
-  let photoFile=null;
-  const prev=f.querySelector('#f_prev');
-  f.querySelector('#f_photo').onchange=e=>{ photoFile=e.target.files[0]||null;
-    if(photoFile){ prev.src=URL.createObjectURL(photoFile); prev.classList.remove('hidden'); } };
+    <label class="field"><span>${T('f_cars')}</span>${stepperHTML('f_cars')}</label>
+    <label class="field"><span>${T('f_preps')}</span>${stepperHTML('f_preps')}</label>
+    <label class="field"><span>${T('f_note')}</span><textarea id="f_note" rows="2" placeholder="${T('f_note_ph')}"></textarea></label>
+    <button class="btn gold big" id="f_save">${T('btn_send_finish')}</button></div>`);
+  const back=openModal(f); bindStepper(f,'f_cars'); bindStepper(f,'f_preps');
+  let photoFile=null; const prev=f.querySelector('#f_prev');
+  f.querySelector('#f_photo').onchange=e=>{ photoFile=e.target.files[0]||null; if(photoFile){ prev.src=URL.createObjectURL(photoFile); prev.classList.remove('hidden'); } };
   f.querySelector('#f_save').onclick=async(e)=>{
-    if(!photoFile){ toast('חובה לצלם את המסמך'); return; }
-    const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> שולח…';
+    if(!photoFile){ toast(T('err_photo')); return; }
+    const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('sending');
     try{
       const blob=await compressImage(photoFile);
       const path=`${a.lot_id}/${a.work_date}/${Date.now()}.jpg`;
-      const up=await db.storage.from('documents').upload(path,blob,{contentType:'image/jpeg',upsert:false});
-      if(up.error) throw up.error;
+      const up=await db.storage.from('documents').upload(path,blob,{contentType:'image/jpeg',upsert:false}); if(up.error) throw up.error;
       const cars=+f.querySelector('#f_cars').value||0, preps=+f.querySelector('#f_preps').value||0;
-      const rep=await db.from('lot_reports').upsert({
-        lot_id:a.lot_id, work_date:a.work_date, cars_washed:cars, preps:preps,
-        photo_path:path, note:f.querySelector('#f_note').value.trim(), submitted_by:ME.id,
-        submitted_at:new Date().toISOString()
-      },{onConflict:'lot_id,work_date'});
-      if(rep.error) throw rep.error;
+      const rep=await db.from('lot_reports').upsert({lot_id:a.lot_id,work_date:a.work_date,cars_washed:cars,preps:preps,photo_path:path,note:f.querySelector('#f_note').value.trim(),submitted_by:ME.id,submitted_at:new Date().toISOString()},{onConflict:'lot_id,work_date'}); if(rep.error) throw rep.error;
       const g=await getGPS();
-      const fin=await db.from('assignments').update({finished_at:new Date().toISOString(),finished_lat:g?.lat,finished_lng:g?.lng}).eq('id',a.id);
-      if(fin.error) throw fin.error;
-      back.remove(); toast('הדיווח נשלח ✓'); render();
-    }catch(err){ toast('שגיאה: '+(err.message||'')); btn.disabled=false; btn.textContent='שלח דיווח וסיים'; }
+      const fin=await db.from('assignments').update({finished_at:new Date().toISOString(),finished_lat:g?.lat,finished_lng:g?.lng}).eq('id',a.id); if(fin.error) throw fin.error;
+      back.remove(); toast(T('toast_sent')); render();
+    }catch(err){ toast(T('err_generic')+(err.message||'')); btn.disabled=false; btn.textContent=T('btn_send_finish'); }
   };
 }
 function stepperHTML(id){ return `<div class="stepper"><button type="button" data-step="-1" data-for="${id}">−</button><input id="${id}" type="number" inputmode="numeric" value="0" min="0"/><button type="button" data-step="1" data-for="${id}">＋</button></div>`; }
 function bindStepper(root,id){ root.querySelectorAll(`[data-for="${id}"]`).forEach(b=>b.onclick=()=>{ const inp=root.querySelector('#'+id); inp.value=Math.max(0,(+inp.value||0)+ +b.dataset.step); }); }
 
-/* ================= SETTINGS ================= */
+/* ================= SETTINGS + ABOUT ================= */
 function renderSettings(v){
-  v.innerHTML=`<h2 class="screen-title">הגדרות</h2>
-    <div class="card"><div class="row between"><span>משתמש</span><span class="muted">${esc(ME.full_name||'')}</span></div>
-      <div class="row between" style="margin-top:8px"><span>תפקיד</span><span class="muted">${roleLabel(ME.role)}</span></div></div>
-    <button class="btn danger" id="lo">התנתק</button>
-    <p class="muted" style="text-align:center;font-size:12px;margin-top:20px">AppNest · גרסת בדיקה 0.1</p>`;
+  v.innerHTML=`<h2 class="screen-title">${T('settings_title')}</h2>
+    <div class="card"><div class="row between"><span>${T('set_user')}</span><span class="muted">${esc(ME.full_name||'')}</span></div>
+      <div class="row between" style="margin-top:8px"><span>${T('set_role')}</span><span class="muted">${roleLabel(ME.role)}</span></div></div>
+    <div class="card"><div class="row between"><span>${T('set_theme')}</span><button class="btn ghost" style="width:auto" id="thBtn">${THEME==='light'?T('theme_light'):T('theme_dark')}</button></div>
+      <div class="row between" style="margin-top:10px"><span>${T('set_lang')}</span><button class="btn ghost" style="width:auto" id="lgBtn">${LANGS.find(l=>l[0]===LANG)[1]}</button></div></div>
+    <button class="btn ghost" id="aboutBtn" style="margin-bottom:12px">ℹ️ ${T('about_open')}</button>
+    <button class="btn danger" id="lo">${T('btn_logout')}</button>
+    <div class="badge">AppNest · v${APP_VERSION}</div>`;
+  v.querySelector('#thBtn').onclick=()=>{ toggleTheme(); render(); };
+  v.querySelector('#lgBtn').onclick=langMenu;
+  v.querySelector('#aboutBtn').onclick=aboutModal;
   v.querySelector('#lo').onclick=logout;
+}
+function aboutModal(){
+  const dev=LANG==='he'?'ברק אפללו':'Barak Aflalo';
+  const m=el(`<div><div style="text-align:center;margin-bottom:16px"><div class="dot" style="width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--gold),var(--gold-soft))"></div><h3 style="margin:0">${T('about_title')}</h3></div>
+    <div class="card" style="margin:0">
+      <div class="row between" style="padding:6px 0"><span class="muted">${T('about_type_lbl')}</span><span>${T('about_type_val')}</span></div>
+      <div class="row between" style="padding:6px 0"><span class="muted">${T('about_dev_lbl')}</span><span>${dev}</span></div>
+      <div class="row between" style="padding:6px 0"><span class="muted">${T('about_ver_lbl')}</span><span>${APP_VERSION}</span></div>
+      <div class="row between" style="padding:6px 0"><span class="muted">${T('about_plat_lbl')}</span><span>${T('about_plat_val')}</span></div>
+    </div>
+    <p class="muted" style="font-size:13px;margin:14px 2px">${T('about_desc')}</p>
+    <div class="badge">© AppNest 2026</div>
+    <button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
+  const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
 }
 
 /* ================= START ================= */
+document.getElementById('loginBtn').addEventListener('click',doLogin);
+document.getElementById('loginPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('lgLang').onclick=langMenu;
+document.getElementById('hLang').onclick=langMenu;
+document.getElementById('lgTheme').onclick=()=>{ toggleTheme(); };
+document.getElementById('hTheme').onclick=()=>{ toggleTheme(); };
+applyLang(); applyTheme();
 (async function init(){
-  const { data:{ session } } = await db.auth.getSession();
+  const {data:{session}}=await db.auth.getSession();
   if(session){ await boot(); } else { showLogin(); }
 })();
 </script>
