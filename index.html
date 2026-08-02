@@ -156,7 +156,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='0.2';
+const APP_VERSION='0.3';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -279,7 +279,18 @@ const DICT={
  about_ver_lbl:{he:'גרסה',en:'Version',ru:'Версия',es:'Versión',ar:'الإصدار'},
  about_plat_lbl:{he:'פלטפורמה',en:'Platform',ru:'Платформа',es:'Plataforma',ar:'المنصة'},
  about_plat_val:{he:'ענן · סנכרון בזמן אמת',en:'Cloud · real-time sync',ru:'Облако · синхронизация',es:'Nube · tiempo real',ar:'سحابة · مزامنة فورية'},
- about_desc:{he:'ניהול צוותי שטיפה בשטח: סידור עבודה, דיווח נוכחות עם מיקום ותיעוד רכבים.',en:'Manage field wash teams: scheduling, GPS check-in and vehicle reporting.',ru:'Выездные бригады: расписание, отметка с GPS и учёт авто.',es:'Equipos de lavado: horarios, fichaje GPS y registro de autos.',ar:'فرق الغسيل الميدانية: الجدولة وتسجيل الحضور بالموقع وتوثيق السيارات.'}
+ about_desc:{he:'ניהול צוותי שטיפה בשטח: סידור עבודה, דיווח נוכחות עם מיקום ותיעוד רכבים.',en:'Manage field wash teams: scheduling, GPS check-in and vehicle reporting.',ru:'Выездные бригады: расписание, отметка с GPS и учёт авто.',es:'Equipos de lavado: horarios, fichaje GPS y registro de autos.',ar:'فرق الغسيل الميدانية: الجدولة وتسجيل الحضور بالموقع وتوثيق السيارات.'},
+ far_flag:{he:'רחוק',en:'far',ru:'далеко',es:'lejos',ar:'بعيد'},
+ del_confirm:{he:'למחוק את השיבוץ?',en:'Delete this assignment?',ru:'Удалить назначение?',es:'¿Eliminar asignación?',ar:'حذف هذا التعيين؟'},
+ del_lot_confirm:{he:'למחוק את המגרש? (השיבוצים והדיווחים שלו יימחקו גם)',en:'Delete this lot? (its assignments and reports go too)',ru:'Удалить площадку? (с назначениями и отчётами)',es:'¿Eliminar el sitio? (con asignaciones e informes)',ar:'حذف الموقع؟ (مع التعيينات والتقارير)'},
+ toast_deleted:{he:'נמחק',en:'Deleted',ru:'Удалено',es:'Eliminado',ar:'تم الحذف'},
+ toast_saved:{he:'נשמר',en:'Saved',ru:'Сохранено',es:'Guardado',ar:'تم الحفظ'},
+ edit_lot_title:{he:'עריכת מגרש',en:'Edit lot',ru:'Изменить площадку',es:'Editar sitio',ar:'تعديل الموقع'},
+ btn_delete:{he:'מחק מגרש',en:'Delete lot',ru:'Удалить',es:'Eliminar',ar:'حذف'},
+ geo_hint:{he:'המיקום מזוהה אוטומטית מהכתובת. אפשר לקבוע ידנית מהמכשיר.',en:'Location is found from the address. You can also set it from your device.',ru:'Координаты берутся из адреса. Можно задать с устройства.',es:'La ubicación se obtiene de la dirección. Puedes fijarla desde tu dispositivo.',ar:'يُحدَّد الموقع من العنوان. يمكن ضبطه من جهازك.'},
+ btn_here:{he:'📍 קבע מיקום מהמכשיר',en:'📍 Set from my device',ru:'📍 Задать с устройства',es:'📍 Fijar desde el dispositivo',ar:'📍 تعيين من جهازي'},
+ loc_ok:{he:'✓ מיקום נקבע',en:'✓ Location set',ru:'✓ Задано',es:'✓ Fijado',ar:'✓ تم التعيين'},
+ has_pin:{he:'📍 מיקום מוגדר',en:'📍 located',ru:'📍 есть точка',es:'📍 ubicado',ar:'📍 محدد'}
 };
 let LANG=localStorage.getItem('cw_lang')||'he';
 let THEME=localStorage.getItem('cw_theme')||'dark';
@@ -310,14 +321,31 @@ function langMenu(){
 let ME=null, CURRENT='dash', SEL_DATE=todayStr();
 
 /* ================= HELPERS ================= */
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+const GEOFENCE_M=200; // flag "arrived" to the manager if farther than this from the lot
+function ymd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function todayStr(){ return ymd(new Date()); }            // LOCAL calendar date, flips at local midnight
 function fmtDate(s){ if(!s) return ''; const[y,m,d]=s.split('-'); return `${d}/${m}`; }
+function distM(aLat,aLng,bLat,bLng){ // Haversine, metres
+  if([aLat,aLng,bLat,bLng].some(x=>x==null)) return null;
+  const R=6371000,rad=x=>x*Math.PI/180;
+  const dLat=rad(bLat-aLat),dLng=rad(bLng-aLng);
+  const h=Math.sin(dLat/2)**2+Math.cos(rad(aLat))*Math.cos(rad(bLat))*Math.sin(dLng/2)**2;
+  return Math.round(R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h)));
+}
+async function geocode(address){ // free OpenStreetMap geocoding, best-effort, Israel-biased
+  try{
+    const u=`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&q=${encodeURIComponent(address)}`;
+    const r=await fetch(u,{headers:{'Accept':'application/json'}}); const j=await r.json();
+    if(j&&j[0]) return {lat:+(+j[0].lat).toFixed(6),lng:+(+j[0].lon).toFixed(6)};
+  }catch(e){}
+  return null;
+}
 function fmtTime(ts){ if(!ts) return ''; return new Date(ts).toLocaleTimeString(LANG==='he'?'he-IL':LANG,{hour:'2-digit',minute:'2-digit'}); }
 function isManager(r){ return ['owner','manager','accountant'].includes(r); }
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function shiftDate(s,n){ const d=new Date(s); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function shiftDate(s,n){ const[y,m,d]=s.split('-').map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return ymd(dt); }
 
 function getGPS(){ return new Promise(res=>{
   if(!navigator.geolocation){ res(null); return; }
@@ -434,15 +462,21 @@ async function renderDash(v){
     c.innerHTML=`<div class="row between"><h3 style="margin:0">${esc(lot?.name||'')}</h3><span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span></div>
       <div class="stack" style="margin-top:8px">
         ${rows.map(a=>{ const[cls,txt]=statusOf(a,!!rep);
-          return `<div class="row between"><span>${esc(empMap[a.employee_id]||T('role_employee'))}</span>
+          const d=a.arrived_at?distM(a.arrived_lat,a.arrived_lng,lot?.lat,lot?.lng):null; const far=(d!=null&&d>GEOFENCE_M);
+          return `<div class="row between">
+            <span class="row" style="gap:6px">${esc(empMap[a.employee_id]||T('role_employee'))}${far?`<span class="pill s-amber">⚠︎ ${T('far_flag')} ${d}m</span>`:''}</span>
             <span class="row" style="gap:8px">${a.arrived_at?`<span class="muted" style="font-size:11px">${fmtTime(a.arrived_at)}${a.finished_at?'–'+fmtTime(a.finished_at):''}</span>`:''}
-            <span class="pill ${cls}">${txt}</span></span></div>`; }).join('')}
+            <span class="pill ${cls}">${txt}</span>
+            <button class="btn ghost" style="width:auto;padding:4px 9px" data-del="${a.id}">🗑️</button></span></div>`; }).join('')}
       </div>
       ${rep?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
         <div class="row between"><span>🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}</span>
         ${rep.photo_path?`<button class="btn ghost" style="width:auto" data-photo="${esc(rep.photo_path)}">📄 ${T('btn_doc')}</button>`:''}</div>
         ${rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`:''}`;
     const pb=c.querySelector('[data-photo]'); if(pb) pb.onclick=()=>viewPhoto(pb.dataset.photo,rep.note);
+    c.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm(T('del_confirm'))) return;
+      const {error}=await db.from('assignments').delete().eq('id',b.dataset.del);
+      if(error){ toast(T('err_generic')+error.message); return; } toast(T('toast_deleted')); render(); });
     list.appendChild(c);
   }
 }
@@ -458,28 +492,43 @@ async function renderLots(v){
   const {data:lots}=await db.from('lots').select('*').order('name');
   v.innerHTML=`<h2 class="screen-title">${T('lots_title')}</h2>
     <button class="btn gold" id="addLot" style="margin-bottom:14px">${T('btn_add_lot')}</button><div id="lotCards"></div>`;
-  v.querySelector('#addLot').onclick=lotForm;
+  v.querySelector('#addLot').onclick=()=>lotForm(null);
   const wrap=v.querySelector('#lotCards');
   if(!lots?.length){ wrap.innerHTML=`<div class="empty">${T('lots_empty')}</div>`; return; }
-  lots.forEach(l=>wrap.appendChild(el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l.name)}</h3>
-    <span class="muted" style="font-size:12px">${esc(l.region||'')}</span></div>
-    <div class="muted" style="font-size:13px;margin-top:4px">${esc(l.client_name||'')} ${l.address?'· '+esc(l.address):''}</div></div>`)));
+  lots.forEach(l=>{ const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l.name)}</h3>
+    <span class="muted" style="font-size:12px">${l.lat&&l.lng?'📍 ':''}${esc(l.region||'')}</span></div>
+    <div class="muted" style="font-size:13px;margin-top:4px">${esc(l.client_name||'')} ${l.address?'· '+esc(l.address):''}</div></div>`);
+    c.style.cursor='pointer'; c.onclick=()=>lotForm(l); wrap.appendChild(c); });
 }
-function lotForm(){
+function lotForm(existing){
   const R=[['',T('choose')],['north',T('r_north')],['haifa',T('r_haifa')],['sharon',T('r_sharon')],['center',T('r_center')],['jlm',T('r_jlm')],['south',T('r_south')]];
-  const f=el(`<div><h3>${T('lotform_title')}</h3>
-    <label class="field"><span>${T('f_lotname')}</span><input id="l_name"/></label>
-    <label class="field"><span>${T('f_client')}</span><input id="l_client"/></label>
-    <label class="field"><span>${T('f_region')}</span><select id="l_region">${R.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
-    <label class="field"><span>${T('f_address')}</span><input id="l_addr"/></label>
-    <button class="btn gold big" id="l_save">${T('btn_save_lot')}</button></div>`);
+  let coords=existing&&existing.lat!=null&&existing.lng!=null?{lat:existing.lat,lng:existing.lng}:null;
+  const f=el(`<div><h3>${existing?T('edit_lot_title'):T('lotform_title')}</h3>
+    <label class="field"><span>${T('f_lotname')}</span><input id="l_name" value="${existing?esc(existing.name):''}"/></label>
+    <label class="field"><span>${T('f_client')}</span><input id="l_client" value="${existing?esc(existing.client_name||''):''}"/></label>
+    <label class="field"><span>${T('f_region')}</span><select id="l_region">${R.map(([v,l])=>`<option value="${v}" ${existing&&existing.region===v?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="field"><span>${T('f_address')}</span><input id="l_addr" value="${existing?esc(existing.address||''):''}"/></label>
+    <button class="btn ghost" id="l_here" style="margin-bottom:6px">${coords?T('loc_ok'):T('btn_here')}</button>
+    <div class="muted" style="font-size:12px;margin-bottom:12px">${T('geo_hint')}</div>
+    <button class="btn gold big" id="l_save">${T('btn_save_lot')}</button>
+    ${existing?`<button class="btn danger" id="l_del" style="margin-top:10px">${T('btn_delete')}</button>`:''}</div>`);
   const back=openModal(f);
-  f.querySelector('#l_save').onclick=async()=>{
+  f.querySelector('#l_here').onclick=async(e)=>{ const b=e.target; b.innerHTML='<span class="spin"></span>';
+    const g=await getGPS(); if(g){ coords=g; b.textContent=T('loc_ok'); } else { b.textContent=T('btn_here'); toast('GPS ✕'); } };
+  f.querySelector('#l_save').onclick=async(e)=>{
     const name=f.querySelector('#l_name').value.trim(); if(!name){ toast(T('err_no_lotname')); return; }
-    const {error}=await db.from('lots').insert({name,client_name:f.querySelector('#l_client').value.trim(),region:f.querySelector('#l_region').value,address:f.querySelector('#l_addr').value.trim()});
-    if(error){ toast(T('err_generic')+error.message); return; }
-    back.remove(); toast(T('toast_lot_added')); render();
+    const addr=f.querySelector('#l_addr').value.trim();
+    const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    let lat=coords?.lat, lng=coords?.lng;
+    if((lat==null||lng==null)&&addr){ const g=await geocode(addr); if(g){ lat=g.lat; lng=g.lng; } }
+    const payload={name,client_name:f.querySelector('#l_client').value.trim(),region:f.querySelector('#l_region').value,address:addr,lat,lng};
+    const res=existing?await db.from('lots').update(payload).eq('id',existing.id):await db.from('lots').insert(payload);
+    if(res.error){ toast(T('err_generic')+res.error.message); b.disabled=false; b.textContent=T('btn_save_lot'); return; }
+    back.remove(); toast(existing?T('toast_saved'):T('toast_lot_added')); render();
   };
+  if(existing) f.querySelector('#l_del').onclick=async()=>{ if(!confirm(T('del_lot_confirm'))) return;
+    const {error}=await db.from('lots').delete().eq('id',existing.id);
+    if(error){ toast(T('err_generic')+error.message); return; } back.remove(); toast(T('toast_deleted')); render(); };
 }
 
 /* ================= MANAGER · ASSIGN ================= */
