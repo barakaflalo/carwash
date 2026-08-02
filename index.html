@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0b" />
+<title>ניהול שטיפה · AppNest</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0a0a0b; --surface:#141416; --surface2:#1c1c20; --line:#2a2a30;
+    --text:#f5f5f2; --muted:#9a9aa2; --gold:#d4af37; --gold-soft:#b8952e;
+    --grey:#6b7280; --blue:#3b82f6; --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Hebrew",Arial,sans-serif;
+    line-height:1.5; overscroll-behavior-y:none;
+  }
+  button{font-family:inherit; cursor:pointer}
+  input,select,textarea{font-family:inherit}
+  .hidden{display:none !important}
+
+  /* ---- App shell ---- */
+  .app{max-width:760px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 18px calc(12px + env(safe-area-inset-top));
+    position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(10,10,11,.85));
+    backdrop-filter:blur(8px);z-index:20;border-bottom:1px solid var(--line)
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.3px}
+  .brand .dot{width:26px;height:26px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,var(--gold),var(--gold-soft));
+    box-shadow:0 0 0 3px rgba(212,175,55,.15)}
+  .brand small{color:var(--gold);font-weight:800}
+  .who{font-size:12px;color:var(--muted);text-align:left}
+  main{flex:1;padding:16px 16px 96px}
+  h2.screen-title{font-size:20px;margin:4px 2px 14px}
+  .muted{color:var(--muted)}
+
+  /* ---- Cards ---- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+  .card h3{margin:0 0 10px;font-size:15px}
+  .row{display:flex;align-items:center;gap:10px}
+  .between{justify-content:space-between}
+  .stack{display:flex;flex-direction:column;gap:10px}
+
+  /* ---- Inputs ---- */
+  label.field{display:block;margin-bottom:12px}
+  label.field span{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input,select,textarea{
+    width:100%;padding:13px 14px;background:var(--surface2);border:1px solid var(--line);
+    color:var(--text);border-radius:12px;font-size:16px;outline:none
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+
+  /* ---- Buttons ---- */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:13px 18px;border-radius:12px;border:1px solid var(--line);
+    background:var(--surface2);color:var(--text);font-size:15px;font-weight:600;width:100%}
+  .btn.gold{background:linear-gradient(180deg,var(--gold),var(--gold-soft));color:#1a1400;border:none}
+  .btn.big{padding:20px;font-size:19px;font-weight:800}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:var(--red);border-color:rgba(239,68,68,.4)}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.5}
+
+  /* ---- Status pills ---- */
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+  .s-grey{color:var(--grey);background:rgba(107,114,128,.14)}
+  .s-blue{color:var(--blue);background:rgba(59,130,246,.14)}
+  .s-green{color:var(--green);background:rgba(34,197,94,.14)}
+  .s-red{color:var(--red);background:rgba(239,68,68,.14)}
+  .s-amber{color:var(--amber);background:rgba(245,158,11,.14)}
+
+  /* ---- Bottom nav ---- */
+  nav.bottom{
+    position:fixed;bottom:0;left:0;right:0;max-width:760px;margin:0 auto;
+    display:flex;background:rgba(20,20,22,.96);backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:20
+  }
+  nav.bottom button{flex:1;background:none;border:none;color:var(--muted);
+    padding:10px 4px 12px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  nav.bottom button .ic{font-size:20px}
+  nav.bottom button.active{color:var(--gold)}
+
+  /* ---- Login ---- */
+  .login-wrap{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:28px;max-width:420px;margin:0 auto}
+  .login-brand{text-align:center;margin-bottom:28px}
+  .login-brand .dot{width:56px;height:56px;margin:0 auto 12px}
+  .login-brand h1{margin:0;font-size:24px}
+  .login-brand p{margin:6px 0 0;color:var(--gold);font-weight:700;font-size:14px}
+
+  /* ---- Modal ---- */
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:40}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;
+    width:100%;max-width:760px;padding:20px;max-height:92dvh;overflow:auto;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+  .modal h3{margin:0 0 14px;font-size:18px}
+  .modal .grab{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 14px}
+
+  /* ---- Stepper ---- */
+  .stepper{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .stepper button{width:56px;height:52px;background:var(--surface2);border:none;color:var(--gold);font-size:24px}
+  .stepper input{text-align:center;border:none;border-radius:0;border-inline:1px solid var(--line);font-size:20px;font-weight:800}
+
+  /* ---- Toast ---- */
+  #toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);
+    background:#000;border:1px solid var(--line);color:var(--text);
+    padding:12px 18px;border-radius:12px;font-size:14px;z-index:60;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
+  #toast.show{opacity:1}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 10px}
+  .thumb{width:100%;border-radius:12px;margin-top:8px;border:1px solid var(--line)}
+  .spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="loginScreen" class="login-wrap">
+  <div class="login-brand">
+    <div class="dot"></div>
+    <h1>ניהול שטיפת רכבים</h1>
+    <p>AppNest</p>
+  </div>
+  <div class="card">
+    <label class="field"><span>שם משתמש או אימייל</span>
+      <input id="loginUser" autocomplete="username" placeholder="הקלד שם משתמש" /></label>
+    <label class="field"><span>סיסמה</span>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" /></label>
+    <button id="loginBtn" class="btn gold big">כניסה</button>
+    <p id="loginErr" class="muted" style="text-align:center;margin:12px 0 0;color:var(--red)"></p>
+  </div>
+</section>
+
+<!-- ============ APP ============ -->
+<div id="app" class="app hidden">
+  <header class="top">
+    <div class="brand"><div class="dot"></div><div>ניהול שטיפה <small>·</small></div></div>
+    <div class="who"><div id="whoName">—</div><div id="whoRole"></div></div>
+  </header>
+  <main id="view"></main>
+  <nav id="nav" class="bottom"></nav>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toast"></div>
+
+<script>
+/* ================= CONFIG ================= */
+const SUPA_URL = 'https://kdcuphsvvhtrbusvvagn.supabase.co';
+const SUPA_KEY = 'sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
+const EMAIL_SUFFIX = '@carwash.local'; // used when logging in with a plain username
+const db = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+/* ================= STATE ================= */
+let ME = null;            // { id, full_name, role }
+let CURRENT = 'dash';     // current screen
+let SEL_DATE = todayStr();
+
+/* ================= HELPERS ================= */
+function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function fmtDate(s){ if(!s) return ''; const [y,m,d]=s.split('-'); return `${d}/${m}`; }
+function fmtTime(ts){ if(!ts) return ''; return new Date(ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
+function isManager(role){ return ['owner','manager','accountant'].includes(role); }
+function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
+function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function getGPS(){
+  return new Promise((res)=>{
+    if(!navigator.geolocation){ res(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      p=>res({lat:+p.coords.latitude.toFixed(6), lng:+p.coords.longitude.toFixed(6)}),
+      ()=>res(null), {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+    );
+  });
+}
+function navUrl(lot){
+  if(lot.lat && lot.lng) return `https://www.google.com/maps/dir/?api=1&destination=${lot.lat},${lot.lng}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lot.address||lot.name)}`;
+}
+function wazeUrl(lot){
+  if(lot.lat && lot.lng) return `https://waze.com/ul?ll=${lot.lat},${lot.lng}&navigate=yes`;
+  return `https://waze.com/ul?q=${encodeURIComponent(lot.address||lot.name)}`;
+}
+
+/* compress an image File to a jpeg Blob */
+function compressImage(file, maxDim=1600, quality=0.7){
+  return new Promise((resolve,reject)=>{
+    const img=new Image(); const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      let {width:w,height:h}=img;
+      if(w>h && w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; }
+      else if(h>=w && h>maxDim){ w=Math.round(w*maxDim/h); h=maxDim; }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      c.toBlob(b=> b?resolve(b):reject(new Error('compress failed')),'image/jpeg',quality);
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    img.src=url;
+  });
+}
+
+/* status of an assignment given whether a lot report exists that day */
+function statusOf(a, hasReport){
+  if(a.finished_at) return hasReport ? ['s-green','הושלם'] : ['s-amber','סיים · חסר דיווח'];
+  if(a.arrived_at)  return ['s-blue','בעבודה'];
+  if(a.work_date < todayStr()) return ['s-red','לא בוצע'];
+  return ['s-grey','מתוזמן'];
+}
+
+/* ================= MODAL ================= */
+function openModal(inner){
+  const back=el(`<div class="modal-back"><div class="modal"><div class="grab"></div></div></div>`);
+  back.querySelector('.modal').appendChild(inner);
+  back.addEventListener('click',e=>{ if(e.target===back) back.remove(); });
+  document.getElementById('modalRoot').appendChild(back);
+  return back;
+}
+function closeModals(){ document.getElementById('modalRoot').innerHTML=''; }
+
+/* ================= AUTH ================= */
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+async function doLogin(){
+  const raw=document.getElementById('loginUser').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const errEl=document.getElementById('loginErr');
+  errEl.textContent='';
+  if(!raw||!pass){ errEl.textContent='חסר שם משתמש או סיסמה'; return; }
+  const email = raw.includes('@') ? raw : (raw.toLowerCase()+EMAIL_SUFFIX);
+  const btn=document.getElementById('loginBtn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  const { error } = await db.auth.signInWithPassword({ email, password:pass });
+  btn.disabled=false; btn.textContent='כניסה';
+  if(error){ errEl.textContent='שם משתמש או סיסמה שגויים'; return; }
+  await boot();
+}
+
+async function loadMe(){
+  const { data:{ user } } = await db.auth.getUser();
+  if(!user) return null;
+  const { data, error } = await db.from('profiles').select('id,full_name,role').eq('id',user.id).single();
+  if(error||!data){ return { id:user.id, full_name:user.email, role:'employee' }; }
+  return data;
+}
+
+async function boot(){
+  ME = await loadMe();
+  if(!ME){ showLogin(); return; }
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('whoName').textContent = ME.full_name || '';
+  document.getElementById('whoRole').textContent = roleLabel(ME.role);
+  buildNav();
+  CURRENT = isManager(ME.role) ? 'dash' : 'myday';
+  render();
+}
+function roleLabel(r){ return {owner:'בעלים',manager:'מנהל',accountant:'הנהלת חשבונות',employee:'עובד'}[r]||r; }
+
+function showLogin(){
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+async function logout(){ await db.auth.signOut(); ME=null; location.reload(); }
+
+/* ================= NAV ================= */
+function buildNav(){
+  const nav=document.getElementById('nav');
+  const items = isManager(ME.role)
+    ? [['dash','🗂️','לוח'],['lots','📍','מגרשים'],['assign','🗓️','שיבוץ'],['emps','👥','עובדים'],['settings','⚙️','הגדרות']]
+    : [['myday','📋','היום שלי'],['settings','⚙️','הגדרות']];
+  nav.innerHTML='';
+  items.forEach(([id,ic,lbl])=>{
+    const b=el(`<button data-id="${id}"><span class="ic">${ic}</span><span>${lbl}</span></button>`);
+    b.addEventListener('click',()=>{ CURRENT=id; render(); });
+    nav.appendChild(b);
+  });
+}
+function markNav(){ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.id===CURRENT)); }
+
+/* ================= RENDER ROUTER ================= */
+async function render(){
+  markNav();
+  const v=document.getElementById('view');
+  v.innerHTML='<div class="empty"><span class="spin"></span></div>';
+  try{
+    if(CURRENT==='dash')     await renderDash(v);
+    else if(CURRENT==='lots')  await renderLots(v);
+    else if(CURRENT==='assign')await renderAssign(v);
+    else if(CURRENT==='emps')  await renderEmps(v);
+    else if(CURRENT==='myday') await renderMyDay(v);
+    else if(CURRENT==='settings') renderSettings(v);
+  }catch(e){ v.innerHTML=`<div class="empty">שגיאה בטעינה.<br><span class="muted">${esc(e.message||'')}</span></div>`; }
+}
+
+/* ================= MANAGER · DASHBOARD ================= */
+async function renderDash(v){
+  const [{data:asgs},{data:reports}] = await Promise.all([
+    db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('work_date',SEL_DATE).order('created_at'),
+    db.from('lot_reports').select('*').eq('work_date',SEL_DATE)
+  ]);
+  const empMap = await employeeMap();
+  const repByLot={}; (reports||[]).forEach(r=>repByLot[r.lot_id]=r);
+  // group assignments by lot
+  const byLot={};
+  (asgs||[]).forEach(a=>{ (byLot[a.lot_id]=byLot[a.lot_id]||{lot:a.lots,rows:[]}).rows.push(a); });
+
+  const redCount=(asgs||[]).filter(a=>!a.finished_at && a.work_date<todayStr()).length;
+
+  v.innerHTML=`
+    <h2 class="screen-title">לוח בקרה</h2>
+    <div class="card row between">
+      <button class="btn ghost" style="width:auto" id="prevD">‹</button>
+      <div style="text-align:center"><div style="font-weight:800">${SEL_DATE===todayStr()?'היום':''} ${SEL_DATE}</div>
+        <div class="muted" style="font-size:12px">${(asgs||[]).length} שיבוצים · ${Object.keys(byLot).length} מגרשים</div></div>
+      <button class="btn ghost" style="width:auto" id="nextD">›</button>
+    </div>
+    ${redCount?`<div class="card" style="border-color:rgba(239,68,68,.4)"><span class="pill s-red">${redCount} משימות לא בוצעו</span></div>`:''}
+    <div id="lotList"></div>`;
+  v.querySelector('#prevD').onclick=()=>{ SEL_DATE=shiftDate(SEL_DATE,-1); render(); };
+  v.querySelector('#nextD').onclick=()=>{ SEL_DATE=shiftDate(SEL_DATE,1); render(); };
+
+  const list=v.querySelector('#lotList');
+  if(!Object.keys(byLot).length){ list.innerHTML='<div class="empty">אין שיבוצים לתאריך הזה.<br>עבור ל“שיבוץ” כדי לתזמן צוות.</div>'; return; }
+
+  for(const lotId in byLot){
+    const {lot,rows}=byLot[lotId];
+    const rep=repByLot[lotId];
+    const c=el(`<div class="card"></div>`);
+    c.innerHTML=`
+      <div class="row between"><h3 style="margin:0">${esc(lot?.name||'מגרש')}</h3>
+        <span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span></div>
+      <div class="stack" style="margin-top:8px">
+        ${rows.map(a=>{ const [cls,txt]=statusOf(a,!!rep);
+          return `<div class="row between"><span>${esc(empMap[a.employee_id]||'עובד')}</span>
+            <span class="row" style="gap:8px">
+              ${a.arrived_at?`<span class="muted" style="font-size:11px">${fmtTime(a.arrived_at)}${a.finished_at?'–'+fmtTime(a.finished_at):''}</span>`:''}
+              <span class="pill ${cls}">${txt}</span></span></div>`;
+        }).join('')}
+      </div>
+      ${rep?`<div class="row between" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <span>🚗 ${rep.cars_washed} רכבים · ✨ ${rep.preps} הכנות</span>
+          ${rep.photo_path?`<button class="btn ghost" style="width:auto" data-photo="${esc(rep.photo_path)}">📄 מסמך</button>`:''}
+        </div>`:''}`;
+    const pb=c.querySelector('[data-photo]');
+    if(pb) pb.onclick=()=>viewPhoto(pb.dataset.photo);
+    list.appendChild(c);
+  }
+}
+function shiftDate(s,days){ const d=new Date(s); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+
+async function viewPhoto(path){
+  const { data, error } = await db.storage.from('documents').createSignedUrl(path,3600);
+  if(error){ toast('לא ניתן לפתוח את המסמך'); return; }
+  const m=el(`<div><h3>מסמך המגרש</h3><img class="thumb" src="${data.signedUrl}"/><button class="btn ghost" style="margin-top:12px" id="cl">סגור</button></div>`);
+  const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
+}
+
+/* ================= MANAGER · LOTS ================= */
+async function renderLots(v){
+  const {data:lots}=await db.from('lots').select('*').order('name');
+  v.innerHTML=`<h2 class="screen-title">מגרשים</h2>
+    <button class="btn gold" id="addLot" style="margin-bottom:14px">＋ הוסף מגרש</button>
+    <div id="lotCards"></div>`;
+  v.querySelector('#addLot').onclick=lotForm;
+  const wrap=v.querySelector('#lotCards');
+  if(!lots?.length){ wrap.innerHTML='<div class="empty">עדיין אין מגרשים. הוסף את הראשון.</div>'; return; }
+  lots.forEach(l=>{
+    const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l.name)}</h3>
+      <span class="muted" style="font-size:12px">${esc(l.region||'')}</span></div>
+      <div class="muted" style="font-size:13px;margin-top:4px">${esc(l.client_name||'')} ${l.address?'· '+esc(l.address):''}</div></div>`);
+    wrap.appendChild(c);
+  });
+}
+function lotForm(){
+  const f=el(`<div>
+    <h3>מגרש חדש</h3>
+    <label class="field"><span>שם המגרש *</span><input id="l_name" placeholder="למשל: אלבר ראשל“צ"/></label>
+    <label class="field"><span>לקוח</span><input id="l_client" placeholder="למשל: אלבר"/></label>
+    <label class="field"><span>אזור</span>
+      <select id="l_region"><option value="">— בחר —</option><option>צפון</option><option>חיפה והצפון</option><option>שרון</option><option>מרכז</option><option>ירושלים</option><option>דרום</option></select></label>
+    <label class="field"><span>כתובת (לניווט)</span><input id="l_addr" placeholder="רחוב, עיר"/></label>
+    <button class="btn gold big" id="l_save">שמור מגרש</button>
+  </div>`);
+  const back=openModal(f);
+  f.querySelector('#l_save').onclick=async()=>{
+    const name=f.querySelector('#l_name').value.trim();
+    if(!name){ toast('חסר שם מגרש'); return; }
+    const {error}=await db.from('lots').insert({
+      name, client_name:f.querySelector('#l_client').value.trim(),
+      region:f.querySelector('#l_region').value, address:f.querySelector('#l_addr').value.trim()
+    });
+    if(error){ toast('שגיאה: '+error.message); return; }
+    back.remove(); toast('המגרש נוסף'); render();
+  };
+}
+
+/* ================= MANAGER · ASSIGN ================= */
+async function renderAssign(v){
+  const [{data:lots},emps] = await Promise.all([ db.from('lots').select('*').eq('active',true).order('name'), employeeList() ]);
+  v.innerHTML=`<h2 class="screen-title">שיבוץ צוות</h2>
+    <div class="card">
+      <label class="field"><span>תאריך</span><input type="date" id="a_date" value="${SEL_DATE}"/></label>
+      <label class="field"><span>מגרש</span>
+        <select id="a_lot"><option value="">— בחר מגרש —</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></label>
+      <span class="muted" style="font-size:13px">בחר עובד/ים לצוות (1–5):</span>
+      <div id="a_emps" class="stack" style="margin-top:10px">
+        ${(emps||[]).map(e=>`<label class="row" style="gap:10px;background:var(--surface2);padding:12px;border-radius:12px;border:1px solid var(--line)">
+          <input type="checkbox" style="width:20px;height:20px" value="${e.id}"/> <span>${esc(e.full_name||'עובד')}</span></label>`).join('') || '<div class="muted">אין עובדים. הוסף עובדים במסך “עובדים”.</div>'}
+      </div>
+      <button class="btn gold big" id="a_save" style="margin-top:14px">שבץ</button>
+    </div>`;
+  v.querySelector('#a_save').onclick=async()=>{
+    const date=v.querySelector('#a_date').value, lot=v.querySelector('#a_lot').value;
+    const chosen=[...v.querySelectorAll('#a_emps input:checked')].map(i=>i.value);
+    if(!date||!lot||!chosen.length){ toast('בחר תאריך, מגרש ולפחות עובד אחד'); return; }
+    const rows=chosen.map(eid=>({lot_id:lot,employee_id:eid,work_date:date,created_by:ME.id}));
+    const {error}=await db.from('assignments').insert(rows);
+    if(error){ toast('שגיאה: '+error.message); return; }
+    toast(`${chosen.length} שובצו בהצלחה`); SEL_DATE=date; CURRENT='dash'; render();
+  };
+}
+
+/* ================= MANAGER · EMPLOYEES ================= */
+async function renderEmps(v){
+  const emps=await employeeList();
+  v.innerHTML=`<h2 class="screen-title">עובדים</h2>
+    <div class="card" style="border-color:rgba(212,175,55,.35)">
+      <div class="muted" style="font-size:13px">הוספת עובד חדש מתוך האפליקציה תופעל בשלב הבא (דרך פונקציית השרת המאובטחת). כרגע מוצגים העובדים הקיימים.</div>
+    </div>
+    <div class="stack">
+      ${(emps||[]).map(e=>`<div class="card row between" style="margin:0"><span>${esc(e.full_name||'עובד')}</span><span class="pill s-green">פעיל</span></div>`).join('') || '<div class="empty">אין עובדים עדיין.</div>'}
+    </div>`;
+}
+
+/* helpers for employees */
+async function employeeList(){ const {data}=await db.from('profiles').select('id,full_name').eq('role','employee').eq('active',true).order('full_name'); return data||[]; }
+async function employeeMap(){ const list=await employeeList(); const m={}; list.forEach(e=>m[e.id]=e.full_name); return m; }
+
+/* ================= EMPLOYEE · MY DAY ================= */
+async function renderMyDay(v){
+  const {data:asgs}=await db.from('assignments')
+    .select('*, lots(name,address,region,lat,lng)')
+    .eq('employee_id',ME.id).gte('work_date',todayStr()).order('work_date').order('created_at');
+  // check which of my lots+dates already have a report
+  const dates=[...new Set((asgs||[]).map(a=>a.work_date))];
+  let reports=[];
+  if(dates.length){ const {data}=await db.from('lot_reports').select('lot_id,work_date').in('work_date',dates); reports=data||[]; }
+  const hasRep=(a)=>reports.some(r=>r.lot_id===a.lot_id && r.work_date===a.work_date);
+
+  v.innerHTML=`<h2 class="screen-title">המשימות שלי</h2><div id="jobs" class="stack"></div>`;
+  const wrap=v.querySelector('#jobs');
+  if(!asgs?.length){ wrap.innerHTML='<div class="empty">אין לך משימות מתוזמנות.</div>'; return; }
+  asgs.forEach(a=>{
+    const [cls,txt]=statusOf(a,hasRep(a));
+    const c=el(`<div class="card">
+      <div class="row between"><h3 style="margin:0">${esc(a.lots?.name||'מגרש')}</h3><span class="pill ${cls}">${txt}</span></div>
+      <div class="muted" style="font-size:13px;margin-top:4px">${a.work_date===todayStr()?'היום':fmtDate(a.work_date)} · ${esc(a.lots?.address||a.lots?.region||'')}</div>
+    </div>`);
+    c.style.cursor='pointer';
+    c.onclick=()=>jobModal(a);
+    wrap.appendChild(c);
+  });
+}
+
+function jobModal(a){
+  const lot=a.lots||{};
+  const arrived=!!a.arrived_at, finished=!!a.finished_at;
+  const m=el(`<div>
+    <h3>${esc(lot.name||'מגרש')}</h3>
+    <div class="muted" style="margin-bottom:14px">${esc(lot.address||lot.region||'')}</div>
+    <div class="stack">
+      <button class="btn big" id="nav">🧭 נווט למקום</button>
+      <a class="btn ghost" id="waze" target="_blank" rel="noopener">פתח ב‑Waze</a>
+      <button class="btn ${arrived?'ghost':'gold'} big" id="arrive" ${arrived?'disabled':''}>
+        ${arrived?`✓ הגעת ב‑${fmtTime(a.arrived_at)}`:'📍 הגעתי למקום'}</button>
+      <button class="btn ${finished?'ghost':'gold'} big" id="finish" ${(!arrived||finished)?'disabled':''}>
+        ${finished?`✓ סיימת ב‑${fmtTime(a.finished_at)}`:'🏁 סיום ודיווח'}</button>
+    </div>
+  </div>`);
+  const back=openModal(m);
+  m.querySelector('#nav').onclick=()=>window.open(navUrl(lot),'_blank');
+  m.querySelector('#waze').href=wazeUrl(lot);
+  m.querySelector('#arrive').onclick=async(e)=>{
+    const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> קורא מיקום…';
+    const g=await getGPS();
+    const {error}=await db.from('assignments').update({arrived_at:new Date().toISOString(),arrived_lat:g?.lat,arrived_lng:g?.lng}).eq('id',a.id);
+    if(error){ toast('שגיאה: '+error.message); btn.disabled=false; btn.textContent='📍 הגעתי למקום'; return; }
+    toast('נרשמה הגעה'); back.remove(); render();
+  };
+  m.querySelector('#finish').onclick=()=>{ back.remove(); finishForm(a); };
+}
+
+function finishForm(a){
+  const f=el(`<div>
+    <h3>סיום · ${esc(a.lots?.name||'מגרש')}</h3>
+    <label class="field"><span>צילום המסמך (טופס המגרש) *</span>
+      <input type="file" id="f_photo" accept="image/*" capture="environment"/></label>
+    <img id="f_prev" class="thumb hidden"/>
+    <label class="field"><span>כמות רכבים שנשטפו</span>${stepperHTML('f_cars')}</label>
+    <label class="field"><span>כמות הכנות למכירה</span>${stepperHTML('f_preps')}</label>
+    <label class="field"><span>הערה / תקלה (לא חובה)</span><textarea id="f_note" rows="2" placeholder="למשל: רכב הגיע פגוע"></textarea></label>
+    <button class="btn gold big" id="f_save">שלח דיווח וסיים</button>
+  </div>`);
+  const back=openModal(f);
+  bindStepper(f,'f_cars'); bindStepper(f,'f_preps');
+  let photoFile=null;
+  const prev=f.querySelector('#f_prev');
+  f.querySelector('#f_photo').onchange=e=>{ photoFile=e.target.files[0]||null;
+    if(photoFile){ prev.src=URL.createObjectURL(photoFile); prev.classList.remove('hidden'); } };
+  f.querySelector('#f_save').onclick=async(e)=>{
+    if(!photoFile){ toast('חובה לצלם את המסמך'); return; }
+    const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> שולח…';
+    try{
+      const blob=await compressImage(photoFile);
+      const path=`${a.lot_id}/${a.work_date}/${Date.now()}.jpg`;
+      const up=await db.storage.from('documents').upload(path,blob,{contentType:'image/jpeg',upsert:false});
+      if(up.error) throw up.error;
+      const cars=+f.querySelector('#f_cars').value||0, preps=+f.querySelector('#f_preps').value||0;
+      const rep=await db.from('lot_reports').upsert({
+        lot_id:a.lot_id, work_date:a.work_date, cars_washed:cars, preps:preps,
+        photo_path:path, note:f.querySelector('#f_note').value.trim(), submitted_by:ME.id,
+        submitted_at:new Date().toISOString()
+      },{onConflict:'lot_id,work_date'});
+      if(rep.error) throw rep.error;
+      const g=await getGPS();
+      const fin=await db.from('assignments').update({finished_at:new Date().toISOString(),finished_lat:g?.lat,finished_lng:g?.lng}).eq('id',a.id);
+      if(fin.error) throw fin.error;
+      back.remove(); toast('הדיווח נשלח ✓'); render();
+    }catch(err){ toast('שגיאה: '+(err.message||'')); btn.disabled=false; btn.textContent='שלח דיווח וסיים'; }
+  };
+}
+function stepperHTML(id){ return `<div class="stepper"><button type="button" data-step="-1" data-for="${id}">−</button><input id="${id}" type="number" inputmode="numeric" value="0" min="0"/><button type="button" data-step="1" data-for="${id}">＋</button></div>`; }
+function bindStepper(root,id){ root.querySelectorAll(`[data-for="${id}"]`).forEach(b=>b.onclick=()=>{ const inp=root.querySelector('#'+id); inp.value=Math.max(0,(+inp.value||0)+ +b.dataset.step); }); }
+
+/* ================= SETTINGS ================= */
+function renderSettings(v){
+  v.innerHTML=`<h2 class="screen-title">הגדרות</h2>
+    <div class="card"><div class="row between"><span>משתמש</span><span class="muted">${esc(ME.full_name||'')}</span></div>
+      <div class="row between" style="margin-top:8px"><span>תפקיד</span><span class="muted">${roleLabel(ME.role)}</span></div></div>
+    <button class="btn danger" id="lo">התנתק</button>
+    <p class="muted" style="text-align:center;font-size:12px;margin-top:20px">AppNest · גרסת בדיקה 0.1</p>`;
+  v.querySelector('#lo').onclick=logout;
+}
+
+/* ================= START ================= */
+(async function init(){
+  const { data:{ session } } = await db.auth.getSession();
+  if(session){ await boot(); } else { showLogin(); }
+})();
+</script>
+</body>
+</html>
