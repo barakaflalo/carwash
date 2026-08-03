@@ -156,7 +156,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='0.3';
+const APP_VERSION='0.4';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -290,7 +290,15 @@ const DICT={
  geo_hint:{he:'המיקום מזוהה אוטומטית מהכתובת. אפשר לקבוע ידנית מהמכשיר.',en:'Location is found from the address. You can also set it from your device.',ru:'Координаты берутся из адреса. Можно задать с устройства.',es:'La ubicación se obtiene de la dirección. Puedes fijarla desde tu dispositivo.',ar:'يُحدَّد الموقع من العنوان. يمكن ضبطه من جهازك.'},
  btn_here:{he:'📍 קבע מיקום מהמכשיר',en:'📍 Set from my device',ru:'📍 Задать с устройства',es:'📍 Fijar desde el dispositivo',ar:'📍 تعيين من جهازي'},
  loc_ok:{he:'✓ מיקום נקבע',en:'✓ Location set',ru:'✓ Задано',es:'✓ Fijado',ar:'✓ تم التعيين'},
- has_pin:{he:'📍 מיקום מוגדר',en:'📍 located',ru:'📍 есть точка',es:'📍 ubicado',ar:'📍 محدد'}
+ has_pin:{he:'📍 מיקום מוגדר',en:'📍 located',ru:'📍 есть точка',es:'📍 ubicado',ar:'📍 محدد'},
+ add_emp:{he:'＋ הוסף עובד',en:'＋ Add employee',ru:'＋ Добавить работника',es:'＋ Añadir empleado',ar:'＋ إضافة موظف'},
+ emp_form_title:{he:'עובד חדש',en:'New employee',ru:'Новый работник',es:'Nuevo empleado',ar:'موظف جديد'},
+ f_username:{he:'שם משתמש (אנגלית, בלי רווחים)',en:'Username (letters, no spaces)',ru:'Имя пользователя (лат., без пробелов)',es:'Usuario (sin espacios)',ar:'اسم المستخدم (بدون فراغات)'},
+ f_password:{he:'סיסמה',en:'Password',ru:'Пароль',es:'Contraseña',ar:'كلمة المرور'},
+ f_fullname:{he:'שם מלא',en:'Full name',ru:'Полное имя',es:'Nombre completo',ar:'الاسم الكامل'},
+ btn_create_emp:{he:'צור עובד',en:'Create employee',ru:'Создать',es:'Crear',ar:'إنشاء'},
+ toast_emp_added:{he:'העובד נוצר',en:'Employee created',ru:'Работник создан',es:'Empleado creado',ar:'تم إنشاء الموظف'},
+ emp_login_hint:{he:'העובד יתחבר עם שם המשתמש והסיסמה האלה (בלי אימייל).',en:'The worker logs in with this username and password (no email).',ru:'Работник входит с этими данными (без email).',es:'El trabajador entra con estos datos (sin correo).',ar:'يسجّل العامل الدخول بهذه البيانات (بدون بريد).'}
 };
 let LANG=localStorage.getItem('cw_lang')||'he';
 let THEME=localStorage.getItem('cw_theme')||'dark';
@@ -412,7 +420,7 @@ async function logout(){ await db.auth.signOut(); ME=null; location.reload(); }
 function buildNav(){
   const nav=document.getElementById('nav');
   const items=isManager(ME.role)
-    ? [['dash','🗂️','nav_dash'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['reports','📊','nav_reports'],['settings','⚙️','nav_settings']]
+    ? [['dash','🗂️','nav_dash'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['emps','👥','nav_emps'],['reports','📊','nav_reports'],['settings','⚙️','nav_settings']]
     : [['myday','📋','nav_myday'],['settings','⚙️','nav_settings']];
   nav.innerHTML='';
   items.forEach(([id,ic,k])=>{ const b=el(`<button data-id="${id}"><span class="ic">${ic}</span><span>${T(k)}</span></button>`);
@@ -556,8 +564,31 @@ async function employeeMap(){ const l=await employeeList(); const m={}; l.forEac
 async function renderEmps(v){
   const emps=await employeeList();
   v.innerHTML=`<h2 class="screen-title">${T('emps_title')}</h2>
-    <div class="card" style="border-color:rgba(212,175,55,.35)"><div class="muted" style="font-size:13px">${T('emps_note')}</div></div>
+    <button class="btn gold" id="addEmp" style="margin-bottom:14px">${T('add_emp')}</button>
     <div class="stack">${(emps||[]).map(e=>`<div class="card row between" style="margin:0"><span>${esc(e.full_name||T('role_employee'))}</span><span class="pill s-green">${T('active')}</span></div>`).join('')||`<div class="empty">${T('emps_empty')}</div>`}</div>`;
+  v.querySelector('#addEmp').onclick=empForm;
+}
+function empForm(){
+  const f=el(`<div><h3>${T('emp_form_title')}</h3>
+    <label class="field"><span>${T('f_fullname')}</span><input id="e_name"/></label>
+    <label class="field"><span>${T('f_username')}</span><input id="e_user" autocapitalize="none" autocomplete="off"/></label>
+    <label class="field"><span>${T('f_password')}</span><input id="e_pass"/></label>
+    <label class="field"><span>${T('set_lang')}</span><select id="e_lang">${LANGS.map(([c,l])=>`<option value="${c}">${l}</option>`).join('')}</select></label>
+    <div class="muted" style="font-size:12px;margin-bottom:12px">${T('emp_login_hint')}</div>
+    <button class="btn gold big" id="e_save">${T('btn_create_emp')}</button></div>`);
+  const back=openModal(f);
+  f.querySelector('#e_save').onclick=async(e)=>{
+    const username=f.querySelector('#e_user').value.trim(), password=f.querySelector('#e_pass').value;
+    if(!username||!password){ toast(T('err_empty')); return; }
+    const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const {data,error}=await db.functions.invoke('create-employee',{body:{username,password,full_name:f.querySelector('#e_name').value.trim(),language:f.querySelector('#e_lang').value}});
+    if(error||(data&&data.error)){
+      let msg=(data&&data.error)||error?.message||'';
+      try{ if(error&&error.context){ const j=await error.context.json(); if(j&&j.error) msg=j.error; } }catch(_){}
+      toast(T('err_generic')+msg); b.disabled=false; b.textContent=T('btn_create_emp'); return;
+    }
+    back.remove(); toast(T('toast_emp_added')); render();
+  };
 }
 
 /* ================= MANAGER · REPORTS ================= */
