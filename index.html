@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a0a0b" />
 <title>ניהול שטיפת רכבים · AppNest</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
   :root{
     --bg:#0a0a0b; --surface:#141416; --surface2:#1c1c20; --line:#2a2a30;
@@ -156,7 +157,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='0.4';
+const APP_VERSION='0.5';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -298,7 +299,24 @@ const DICT={
  f_fullname:{he:'שם מלא',en:'Full name',ru:'Полное имя',es:'Nombre completo',ar:'الاسم الكامل'},
  btn_create_emp:{he:'צור עובד',en:'Create employee',ru:'Создать',es:'Crear',ar:'إنشاء'},
  toast_emp_added:{he:'העובד נוצר',en:'Employee created',ru:'Работник создан',es:'Empleado creado',ar:'تم إنشاء الموظف'},
- emp_login_hint:{he:'העובד יתחבר עם שם המשתמש והסיסמה האלה (בלי אימייל).',en:'The worker logs in with this username and password (no email).',ru:'Работник входит с этими данными (без email).',es:'El trabajador entra con estos datos (sin correo).',ar:'يسجّل العامل الدخول بهذه البيانات (بدون بريد).'}
+ emp_login_hint:{he:'העובד יתחבר עם שם המשתמש והסיסמה האלה (בלי אימייל).',en:'The worker logs in with this username and password (no email).',ru:'Работник входит с этими данными (без email).',es:'El trabajador entra con estos datos (sin correo).',ar:'يسجّل العامل الدخول بهذه البيانات (بدون بريد).'},
+ emp_detail_title:{he:'פרטי עובד',en:'Employee details',ru:'Данные работника',es:'Datos del empleado',ar:'بيانات الموظف'},
+ lbl_username:{he:'שם משתמש',en:'Username',ru:'Имя пользователя',es:'Usuario',ar:'اسم المستخدم'},
+ btn_save:{he:'שמור',en:'Save',ru:'Сохранить',es:'Guardar',ar:'حفظ'},
+ reset_pass:{he:'איפוס סיסמה',en:'Reset password',ru:'Сброс пароля',es:'Restablecer contraseña',ar:'إعادة تعيين كلمة المرور'},
+ new_pass:{he:'סיסמה חדשה',en:'New password',ru:'Новый пароль',es:'Nueva contraseña',ar:'كلمة مرور جديدة'},
+ btn_set_pass:{he:'עדכן סיסמה',en:'Set password',ru:'Установить',es:'Guardar',ar:'حفظ'},
+ toast_pass_reset:{he:'הסיסמה עודכנה',en:'Password updated',ru:'Пароль обновлён',es:'Contraseña actualizada',ar:'تم تحديث كلمة المرور'},
+ deactivated:{he:'לא פעיל',en:'Inactive',ru:'Неактивен',es:'Inactivo',ar:'غير نشط'},
+ manage_mgrs:{he:'👤 ניהול מנהלים',en:'👤 Manage managers',ru:'👤 Менеджеры',es:'👤 Gerentes',ar:'👤 إدارة المديرين'},
+ add_mgr:{he:'＋ הוסף מנהל',en:'＋ Add manager',ru:'＋ Добавить менеджера',es:'＋ Añadir gerente',ar:'＋ إضافة مدير'},
+ mgr_form_title:{he:'מנהל חדש',en:'New manager',ru:'Новый менеджер',es:'Nuevo gerente',ar:'مدير جديد'},
+ toast_mgr_added:{he:'המנהל נוצר',en:'Manager created',ru:'Менеджер создан',es:'Gerente creado',ar:'تم إنشاء المدير'},
+ docs_title:{he:'מסמכים סרוקים',en:'Scanned documents',ru:'Сканы документов',es:'Documentos escaneados',ar:'المستندات الممسوحة'},
+ btn_dl_all:{he:'⤓ הורד הכל (ZIP)',en:'⤓ Download all (ZIP)',ru:'⤓ Скачать всё (ZIP)',es:'⤓ Descargar todo (ZIP)',ar:'⤓ تنزيل الكل (ZIP)'},
+ btn_download:{he:'⤓ הורד',en:'⤓ Download',ru:'⤓ Скачать',es:'⤓ Descargar',ar:'⤓ تنزيل'},
+ docs_empty:{he:'אין מסמכים בטווח שנבחר.',en:'No documents in the selected range.',ru:'Нет документов.',es:'Sin documentos.',ar:'لا مستندات.'},
+ zipping:{he:'מכין ZIP…',en:'Zipping…',ru:'Архивирую…',es:'Comprimiendo…',ar:'جارٍ الضغط…'}
 };
 let LANG=localStorage.getItem('cw_lang')||'he';
 let THEME=localStorage.getItem('cw_theme')||'dark';
@@ -562,11 +580,39 @@ async function renderAssign(v){
 async function employeeList(){ const {data}=await db.from('profiles').select('id,full_name').eq('role','employee').eq('active',true).order('full_name'); return data||[]; }
 async function employeeMap(){ const l=await employeeList(); const m={}; l.forEach(e=>m[e.id]=e.full_name); return m; }
 async function renderEmps(v){
-  const emps=await employeeList();
+  const {data:emps}=await db.from('profiles').select('id,full_name,username,active').eq('role','employee').order('full_name');
   v.innerHTML=`<h2 class="screen-title">${T('emps_title')}</h2>
     <button class="btn gold" id="addEmp" style="margin-bottom:14px">${T('add_emp')}</button>
-    <div class="stack">${(emps||[]).map(e=>`<div class="card row between" style="margin:0"><span>${esc(e.full_name||T('role_employee'))}</span><span class="pill s-green">${T('active')}</span></div>`).join('')||`<div class="empty">${T('emps_empty')}</div>`}</div>`;
+    <div class="stack" id="empList"></div>`;
   v.querySelector('#addEmp').onclick=empForm;
+  const wrap=v.querySelector('#empList');
+  if(!emps?.length){ wrap.innerHTML=`<div class="empty">${T('emps_empty')}</div>`; return; }
+  emps.forEach(e=>{ const c=el(`<div class="card row between" style="margin:0;cursor:pointer"><span>${esc(e.full_name||T('role_employee'))} <span class="muted" style="font-size:12px">@${esc(e.username||'')}</span></span><span class="pill ${e.active?'s-green':'s-grey'}">${e.active?T('active'):T('deactivated')}</span></div>`);
+    c.onclick=()=>empDetail(e.id); wrap.appendChild(c); });
+}
+async function empDetail(id){
+  const {data:e}=await db.from('profiles').select('*').eq('id',id).single(); if(!e) return;
+  const m=el(`<div><h3>${T('emp_detail_title')}</h3>
+    <label class="field"><span>${T('f_fullname')}</span><input id="d_name" value="${esc(e.full_name||'')}"/></label>
+    <label class="field"><span>${T('lbl_username')}</span><input value="${esc(e.username||'')}" readonly style="opacity:.7"/></label>
+    <label class="field"><span>${T('set_lang')}</span><select id="d_lang">${LANGS.map(([c,l])=>`<option value="${c}" ${e.language===c?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="row" style="gap:10px;margin-bottom:14px"><input type="checkbox" id="d_active" ${e.active?'checked':''} style="width:20px;height:20px"/> <span>${T('active')}</span></label>
+    <button class="btn gold big" id="d_save">${T('btn_save')}</button>
+    <div class="card" style="margin:14px 0 0"><h3 style="margin:0 0 10px">${T('reset_pass')}</h3>
+      <div class="row" style="gap:8px"><input id="d_pass" placeholder="${T('new_pass')}"/><button class="btn" style="width:auto" id="d_setpass">${T('btn_set_pass')}</button></div></div>
+    </div>`);
+  const back=openModal(m);
+  m.querySelector('#d_save').onclick=async(ev)=>{ const b=ev.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const {error}=await db.from('profiles').update({full_name:m.querySelector('#d_name').value.trim(),language:m.querySelector('#d_lang').value,active:m.querySelector('#d_active').checked}).eq('id',id);
+    if(error){ toast(T('err_generic')+error.message); b.disabled=false; b.textContent=T('btn_save'); return; }
+    back.remove(); toast(T('toast_saved')); render(); };
+  m.querySelector('#d_setpass').onclick=async(ev)=>{ const pass=m.querySelector('#d_pass').value; if(!pass){ toast(T('new_pass')); return; }
+    const b=ev.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const {error}=await db.functions.invoke('create-employee',{body:{action:'reset_password',user_id:id,password:pass}});
+    b.disabled=false; b.textContent=T('btn_set_pass');
+    if(error){ let msg=error.message; try{ if(error.context){ const j=await error.context.json(); if(j&&j.error) msg=j.error; } }catch(_){}
+      toast(T('err_generic')+msg); return; }
+    m.querySelector('#d_pass').value=''; toast(T('toast_pass_reset')); };
 }
 function empForm(){
   const f=el(`<div><h3>${T('emp_form_title')}</h3>
@@ -588,6 +634,34 @@ function empForm(){
       toast(T('err_generic')+msg); b.disabled=false; b.textContent=T('btn_create_emp'); return;
     }
     back.remove(); toast(T('toast_emp_added')); render();
+  };
+}
+/* ---- Managers management (owner only) ---- */
+async function managersModal(){
+  const {data:mgrs}=await db.from('profiles').select('id,full_name,username,role').in('role',['owner','manager','accountant']).order('full_name');
+  const m=el(`<div><div class="row between" style="margin-bottom:12px"><h3 style="margin:0">${T('manage_mgrs')}</h3></div>
+    <button class="btn gold" id="addMgr" style="margin-bottom:12px">${T('add_mgr')}</button>
+    <div class="stack">${(mgrs||[]).map(x=>`<div class="card row between" style="margin:0"><span>${esc(x.full_name||'')} <span class="muted" style="font-size:12px">@${esc(x.username||'')}</span></span><span class="pill s-blue">${T('role_'+x.role)}</span></div>`).join('')}</div>
+    <button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
+  const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
+  m.querySelector('#addMgr').onclick=()=>{ back.remove(); mgrForm(); };
+}
+function mgrForm(){
+  const f=el(`<div><h3>${T('mgr_form_title')}</h3>
+    <label class="field"><span>${T('f_fullname')}</span><input id="g_name"/></label>
+    <label class="field"><span>${T('f_username')}</span><input id="g_user" autocapitalize="none" autocomplete="off"/></label>
+    <label class="field"><span>${T('f_password')}</span><input id="g_pass"/></label>
+    <button class="btn gold big" id="g_save">${T('btn_create_emp')}</button></div>`);
+  const back=openModal(f);
+  f.querySelector('#g_save').onclick=async(e)=>{
+    const username=f.querySelector('#g_user').value.trim(), password=f.querySelector('#g_pass').value;
+    if(!username||!password){ toast(T('err_empty')); return; }
+    const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const {data,error}=await db.functions.invoke('create-employee',{body:{role:'manager',username,password,full_name:f.querySelector('#g_name').value.trim()}});
+    if(error||(data&&data.error)){ let msg=(data&&data.error)||error?.message||'';
+      try{ if(error&&error.context){ const j=await error.context.json(); if(j&&j.error) msg=j.error; } }catch(_){}
+      toast(T('err_generic')+msg); b.disabled=false; b.textContent=T('btn_create_emp'); return; }
+    back.remove(); toast(T('toast_mgr_added'));
   };
 }
 
@@ -613,13 +687,45 @@ async function renderReports(v){
    <div class="card"><div class="row between"><span style="font-weight:800">${T('rep_total')}</span><span style="font-weight:800">🚗 ${totCars} · ✨ ${totPreps}</span></div></div>
    <div class="card"><h3>${T('rep_by_lot')}</h3>${Object.keys(byLot).length?Object.values(byLot).map(l=>`<div class="row between" style="padding:6px 0"><span>${esc(l.name)} <span class="muted" style="font-size:12px">(${l.days.size} ${T('u_days')})</span></span><span>🚗 ${l.cars} · ✨ ${l.preps}</span></div>`).join(''):`<div class="muted">${T('rep_empty')}</div>`}</div>
    <div class="card"><h3>${T('rep_by_emp')}</h3>${Object.keys(byEmp).length?Object.entries(byEmp).map(([id,e])=>`<div class="row between" style="padding:6px 0"><span>${esc(empMap[id]||T('role_employee'))}</span><span class="muted" style="font-size:13px">${e.days.size} ${T('u_days')} · ${e.lots.size} ${T('u_lots')}</span></div>`).join(''):`<div class="muted">${T('rep_empty')}</div>`}<div class="muted" style="font-size:11px;margin-top:8px">${T('emp_cars_note')}</div></div>
-   <button class="btn gold" id="r_csv">${T('btn_export')}</button>`;
+   <button class="btn gold" id="r_csv" style="margin-bottom:12px">${T('btn_export')}</button>
+   <div class="card"><div class="row between"><h3 style="margin:0">${T('docs_title')}</h3><button class="btn ghost" style="width:auto" id="r_zip">${T('btn_dl_all')}</button></div>
+     <div id="docGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"><div class="empty" style="grid-column:1/-1"><span class="spin"></span></div></div></div>`;
   const rerun=()=>{ REP_FROM=v.querySelector('#r_from').value; REP_TO=v.querySelector('#r_to').value; render(); };
   v.querySelector('#r_from').onchange=rerun; v.querySelector('#r_to').onchange=rerun;
   v.querySelector('#q_today').onclick=()=>{ REP_FROM=REP_TO=todayStr(); render(); };
   v.querySelector('#q_week').onclick=()=>{ REP_TO=todayStr(); REP_FROM=shiftDate(todayStr(),-6); render(); };
   v.querySelector('#q_month').onclick=()=>{ REP_TO=todayStr(); REP_FROM=shiftDate(todayStr(),-29); render(); };
   v.querySelector('#r_csv').onclick=()=>exportCSV(reports||[],empMap);
+  docsSection(reports||[],v);
+}
+function sanitize(s){ return (s||'lot').replace(/[\\/:*?"<>|]+/g,'_').replace(/\s+/g,'_'); }
+function docName(lotName,date){ return `${sanitize(lotName)}_${date}.jpg`; }
+async function fetchDownload(url,filename){ try{ const b=await (await fetch(url)).blob(); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=filename; a.click(); URL.revokeObjectURL(u);}catch(e){ toast(T('err_generic')+(e.message||'')); } }
+async function docsSection(reports,v){
+  const grid=v.querySelector('#docGrid'), zipBtn=v.querySelector('#r_zip');
+  const withPhoto=reports.filter(r=>r.photo_path);
+  if(!withPhoto.length){ grid.innerHTML=`<div class="muted" style="grid-column:1/-1">${T('docs_empty')}</div>`; zipBtn.style.display='none'; return; }
+  const {data:signed}=await db.storage.from('documents').createSignedUrls(withPhoto.map(r=>r.photo_path),3600);
+  const urlByPath={}; (signed||[]).forEach(s=>{ if(s.signedUrl) urlByPath[s.path]=s.signedUrl; });
+  grid.innerHTML='';
+  withPhoto.forEach(r=>{ const url=urlByPath[r.photo_path]; if(!url) return; const fn=docName(r.lots?.name,r.work_date);
+    const cell=el(`<div><img class="thumb" style="margin:0;height:120px;object-fit:cover;cursor:pointer" src="${url}"/>
+      <button class="btn ghost" style="margin-top:6px;padding:8px" data-dl="1">${T('btn_download')}</button>
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:3px">${esc(r.lots?.name||'')} · ${fmtDate(r.work_date)}</div></div>`);
+    cell.querySelector('img').onclick=()=>{ const mm=el(`<div><img class="thumb" src="${url}"/><button class="btn gold" style="margin-top:10px" data-dl2="1">${T('btn_download')}</button></div>`);
+      openModal(mm); mm.querySelector('[data-dl2]').onclick=()=>fetchDownload(url,fn); };
+    cell.querySelector('[data-dl]').onclick=()=>fetchDownload(url,fn);
+    grid.appendChild(cell); });
+  zipBtn.style.display='';
+  zipBtn.onclick=async()=>{ if(typeof JSZip==='undefined'){ toast('ZIP ✕'); return; }
+    zipBtn.disabled=true; const orig=zipBtn.textContent; zipBtn.textContent=T('zipping');
+    const zip=new JSZip(), used={};
+    for(const r of withPhoto){ const url=urlByPath[r.photo_path]; if(!url) continue; let fn=docName(r.lots?.name,r.work_date);
+      if(used[fn]){ used[fn]++; fn=fn.replace(/\.jpg$/,'_'+used[fn]+'.jpg'); } else used[fn]=1;
+      try{ zip.file(fn,await (await fetch(url)).blob()); }catch(_){} }
+    const blob=await zip.generateAsync({type:'blob'}); const u=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=u; a.download=`carwash_docs_${REP_FROM}_${REP_TO}.zip`; a.click(); URL.revokeObjectURL(u);
+    zipBtn.disabled=false; zipBtn.textContent=orig; };
 }
 function exportCSV(reports,empMap){
   const head=['date','lot','client','cars_washed','preps','submitted_by','note'];
@@ -702,11 +808,13 @@ function renderSettings(v){
     <div class="card"><div class="row between"><span>${T('set_theme')}</span><button class="btn ghost" style="width:auto" id="thBtn">${THEME==='light'?T('theme_light'):T('theme_dark')}</button></div>
       <div class="row between" style="margin-top:10px"><span>${T('set_lang')}</span><button class="btn ghost" style="width:auto" id="lgBtn">${LANGS.find(l=>l[0]===LANG)[1]}</button></div></div>
     <button class="btn ghost" id="aboutBtn" style="margin-bottom:12px">ℹ️ ${T('about_open')}</button>
+    ${ME.role==='owner'?`<button class="btn ghost" id="mgrBtn" style="margin-bottom:12px">${T('manage_mgrs')}</button>`:''}
     <button class="btn danger" id="lo">${T('btn_logout')}</button>
     <div class="badge">AppNest · v${APP_VERSION}</div>`;
   v.querySelector('#thBtn').onclick=()=>{ toggleTheme(); render(); };
   v.querySelector('#lgBtn').onclick=langMenu;
   v.querySelector('#aboutBtn').onclick=aboutModal;
+  const mb=v.querySelector('#mgrBtn'); if(mb) mb.onclick=managersModal;
   v.querySelector('#lo').onclick=logout;
 }
 function aboutModal(){
