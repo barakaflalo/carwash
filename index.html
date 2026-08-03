@@ -4,6 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0a0b" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="שטיפה" />
 <title>ניהול שטיפת רכבים · AppNest</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -157,7 +162,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='0.5';
+const APP_VERSION='0.6';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -316,8 +321,19 @@ const DICT={
  btn_dl_all:{he:'⤓ הורד הכל (ZIP)',en:'⤓ Download all (ZIP)',ru:'⤓ Скачать всё (ZIP)',es:'⤓ Descargar todo (ZIP)',ar:'⤓ تنزيل الكل (ZIP)'},
  btn_download:{he:'⤓ הורד',en:'⤓ Download',ru:'⤓ Скачать',es:'⤓ Descargar',ar:'⤓ تنزيل'},
  docs_empty:{he:'אין מסמכים בטווח שנבחר.',en:'No documents in the selected range.',ru:'Нет документов.',es:'Sin documentos.',ar:'لا مستندات.'},
- zipping:{he:'מכין ZIP…',en:'Zipping…',ru:'Архивирую…',es:'Comprimiendo…',ar:'جارٍ الضغط…'}
+ zipping:{he:'מכין ZIP…',en:'Zipping…',ru:'Архивирую…',es:'Comprimiendo…',ar:'جارٍ الضغط…'},
+ toast_offline_saved:{he:'נשמר — יישלח כשתחזור קליטה',en:'Saved — will send when back online',ru:'Сохранено — отправится при связи',es:'Guardado — se enviará al reconectar',ar:'تم الحفظ — سيُرسل عند عودة الاتصال'},
+ toast_synced:{he:'הנתונים נשלחו',en:'Synced',ru:'Синхронизировано',es:'Sincronizado',ar:'تمت المزامنة'},
+ pending_send:{he:'ממתין לשליחה',en:'Pending upload',ru:'Ожидает отправки',es:'Pendiente de envío',ar:'بانتظار الإرسال'},
+ pending_banner:{he:'ממתינים לשליחה',en:'waiting to send',ru:'ждут отправки',es:'esperando envío',ar:'بانتظار الإرسال'},
+ btn_retry:{he:'נסה לשלוח עכשיו',en:'Try to send now',ru:'Отправить сейчас',es:'Enviar ahora',ar:'حاول الإرسال الآن'},
+ offline_cache:{he:'⚠ מצב לא מקוון — מוצג מידע שמור',en:'⚠ Offline — showing saved data',ru:'⚠ Оффлайн — сохранённые данные',es:'⚠ Sin conexión — datos guardados',ar:'⚠ دون اتصال — بيانات محفوظة'},
+ edit_report:{he:'עריכת דיווח',en:'Edit report',ru:'Изменить отчёт',es:'Editar informe',ar:'تعديل التقرير'},
+ u_hours:{he:'שע׳',en:'h',ru:'ч',es:'h',ar:'س'},
+ assign_repeat:{he:'חזרה שבועית — בחר ימים (לא חובה):',en:'Weekly repeat — pick days (optional):',ru:'Повтор по дням (необязательно):',es:'Repetir por días (opcional):',ar:'تكرار أسبوعي — اختر الأيام (اختياري):'},
+ weeks_ahead:{he:'למשך כמה שבועות',en:'For how many weeks',ru:'Сколько недель',es:'Cuántas semanas',ar:'لكم أسبوع'}
 };
+const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 let LANG=localStorage.getItem('cw_lang')||'he';
 let THEME=localStorage.getItem('cw_theme')||'dark';
 function T(k){ const e=DICT[k]; if(!e) return k; return e[LANG]||e.en||k; }
@@ -399,6 +415,45 @@ function statusOf(a,hasReport){
 }
 function roleLabel(r){ return T('role_'+r); }
 
+/* ================= OFFLINE QUEUE (IndexedDB outbox) ================= */
+const IDB_NAME='carwash_q', IDB_STORE='queue';
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open(IDB_NAME,1);
+  r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains(IDB_STORE)) r.result.createObjectStore(IDB_STORE,{keyPath:'id',autoIncrement:true}); };
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function qAdd(rec){ const d=await idb(); return new Promise((res,rej)=>{ const tx=d.transaction(IDB_STORE,'readwrite'); tx.objectStore(IDB_STORE).add(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+async function qAll(){ try{ const d=await idb(); return await new Promise(res=>{ const tx=d.transaction(IDB_STORE,'readonly'); const rq=tx.objectStore(IDB_STORE).getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>res([]); }); }catch(_){ return []; } }
+async function qDel(id){ try{ const d=await idb(); await new Promise(res=>{ const tx=d.transaction(IDB_STORE,'readwrite'); tx.objectStore(IDB_STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>res(); }); }catch(_){} }
+function isNetErr(e){ return !navigator.onLine || (e && /fetch|network|failed to send|timeout|load failed/i.test(e.message||String(e))); }
+
+async function processRecord(r){
+  if(r.type==='arrive'){
+    const {error}=await db.from('assignments').update({arrived_at:r.arrived_at,arrived_lat:r.lat,arrived_lng:r.lng}).eq('id',r.assignment_id);
+    if(error) throw error;
+  } else if(r.type==='finish'){
+    if(r.photoBlob){ const up=await db.storage.from('documents').upload(r.path,r.photoBlob,{contentType:'image/jpeg',upsert:true}); if(up.error) throw up.error; }
+    const rep=await db.from('lot_reports').upsert({lot_id:r.lot_id,work_date:r.work_date,cars_washed:r.cars,preps:r.preps,photo_path:r.path,note:r.note,submitted_by:r.submitted_by,submitted_at:r.submitted_at},{onConflict:'lot_id,work_date'}); if(rep.error) throw rep.error;
+    const fin=await db.from('assignments').update({finished_at:r.finished_at,finished_lat:r.lat,finished_lng:r.lng}).eq('id',r.assignment_id); if(fin.error) throw fin.error;
+  }
+}
+/* run an action now if online, otherwise stash it in the outbox. returns 'sent' | 'queued' | throws */
+async function submitAction(rec){
+  try{ if(!navigator.onLine) throw new Error('offline'); await processRecord(rec); return 'sent'; }
+  catch(e){ if(isNetErr(e)){ await qAdd(rec); return 'queued'; } throw e; }
+}
+let flushing=false;
+async function flushQueue(silent){
+  if(flushing||!navigator.onLine) return 0;
+  flushing=true; const items=await qAll(); let sent=0;
+  for(const r of items){ try{ await processRecord(r); await qDel(r.id); sent++; }
+    catch(e){ if(isNetErr(e)) break; else { await qDel(r.id); } } }  // drop permanently-failing records
+  flushing=false;
+  if(sent){ if(!silent) toast(T('toast_synced')); if(ME) render(); }
+  return sent;
+}
+async function pendingSet(){ const items=await qAll(); return new Set(items.map(r=>r.assignment_id)); }
+async function pendingCount(){ return (await qAll()).length; }
+window.addEventListener('online',()=>flushQueue(false));
+
 /* ================= MODAL ================= */
 function openModal(inner){
   const back=el(`<div class="modal-back"><div class="modal"><div class="grab"></div></div></div>`);
@@ -429,7 +484,7 @@ async function boot(){
   ME=await loadMe(); if(!ME){ showLogin(); return; }
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  buildNav(); CURRENT=isManager(ME.role)?'dash':'myday'; render();
+  buildNav(); CURRENT=isManager(ME.role)?'dash':'myday'; render(); flushQueue(true);
 }
 function showLogin(){ document.getElementById('app').classList.add('hidden'); document.getElementById('loginScreen').classList.remove('hidden'); }
 async function logout(){ await db.auth.signOut(); ME=null; location.reload(); }
@@ -497,9 +552,10 @@ async function renderDash(v){
       </div>
       ${rep?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
         <div class="row between"><span>🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}</span>
-        ${rep.photo_path?`<button class="btn ghost" style="width:auto" data-photo="${esc(rep.photo_path)}">📄 ${T('btn_doc')}</button>`:''}</div>
+        <span class="row" style="gap:6px">${rep.photo_path?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-photo="${esc(rep.photo_path)}">📄</button>`:''}<button class="btn ghost" style="width:auto;padding:6px 10px" data-editrep="1">✏️</button></span></div>
         ${rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`:''}`;
     const pb=c.querySelector('[data-photo]'); if(pb) pb.onclick=()=>viewPhoto(pb.dataset.photo,rep.note);
+    const eb=c.querySelector('[data-editrep]'); if(eb) eb.onclick=()=>editReportForm(rep);
     c.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm(T('del_confirm'))) return;
       const {error}=await db.from('assignments').delete().eq('id',b.dataset.del);
       if(error){ toast(T('err_generic')+error.message); return; } toast(T('toast_deleted')); render(); });
@@ -511,6 +567,19 @@ async function viewPhoto(path,note){
   if(error){ toast(T('doc_fail')); return; }
   const m=el(`<div><h3>${T('btn_doc')}</h3><img class="thumb" src="${data.signedUrl}"/>${note?`<p class="muted" style="margin-top:10px">📝 ${esc(note)}</p>`:''}<button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
   const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
+}
+function editReportForm(rep){
+  const f=el(`<div><h3>${T('edit_report')}</h3>
+    <label class="field"><span>${T('f_cars')}</span>${stepperHTML('er_cars')}</label>
+    <label class="field"><span>${T('f_preps')}</span>${stepperHTML('er_preps')}</label>
+    <label class="field"><span>${T('f_note')}</span><textarea id="er_note" rows="2"></textarea></label>
+    <button class="btn gold big" id="er_save">${T('btn_save')}</button></div>`);
+  const back=openModal(f); bindStepper(f,'er_cars'); bindStepper(f,'er_preps');
+  f.querySelector('#er_cars').value=rep.cars_washed||0; f.querySelector('#er_preps').value=rep.preps||0; f.querySelector('#er_note').value=rep.note||'';
+  f.querySelector('#er_save').onclick=async(e)=>{ const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const {error}=await db.from('lot_reports').update({cars_washed:+f.querySelector('#er_cars').value||0,preps:+f.querySelector('#er_preps').value||0,note:f.querySelector('#er_note').value.trim()}).eq('id',rep.id);
+    if(error){ toast(T('err_generic')+error.message); b.disabled=false; b.textContent=T('btn_save'); return; }
+    back.remove(); toast(T('toast_saved')); render(); };
 }
 
 /* ================= MANAGER · LOTS ================= */
@@ -565,16 +634,26 @@ async function renderAssign(v){
     <label class="field"><span>${T('nav_lots')}</span><select id="a_lot"><option value="">${T('choose_lot')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></label>
     <span class="muted" style="font-size:13px">${T('choose_team')}</span>
     <div id="a_emps" class="stack" style="margin-top:10px">${(emps||[]).map(e=>`<label class="row" style="gap:10px;background:var(--surface2);padding:12px;border-radius:12px;border:1px solid var(--line)"><input type="checkbox" style="width:20px;height:20px" value="${e.id}"/> <span>${esc(e.full_name||T('role_employee'))}</span></label>`).join('')||`<div class="muted">${T('no_emps_add')}</div>`}</div>
-    <button class="btn gold big" id="a_save" style="margin-top:14px">${T('btn_assign')}</button></div>`;
+    <div class="muted" style="font-size:13px;margin-top:14px">${T('assign_repeat')}</div>
+    <div class="row" style="gap:6px;margin-top:8px" id="a_dows">${(DOW[LANG]||DOW.en).map((d,i)=>`<button type="button" class="btn ghost dow" data-d="${i}" style="padding:10px 0">${d}</button>`).join('')}</div>
+    <label class="field" style="margin-top:10px"><span>${T('weeks_ahead')}</span><input type="number" id="a_weeks" value="4" min="1" max="12"/></label>
+    <button class="btn gold big" id="a_save" style="margin-top:6px">${T('btn_assign')}</button></div>`;
+  v.querySelectorAll('.dow').forEach(b=>b.onclick=()=>b.classList.toggle('gold'));
   v.querySelector('#a_save').onclick=async()=>{
     const date=v.querySelector('#a_date').value,lot=v.querySelector('#a_lot').value;
     const chosen=[...v.querySelectorAll('#a_emps input:checked')].map(i=>i.value);
     if(!date||!lot||!chosen.length){ toast(T('err_assign')); return; }
-    const {error}=await db.from('assignments').insert(chosen.map(eid=>({lot_id:lot,employee_id:eid,work_date:date,created_by:ME.id})));
+    const dows=[...v.querySelectorAll('.dow.gold')].map(b=>+b.dataset.d);
+    const weeks=Math.min(12,Math.max(1,+v.querySelector('#a_weeks').value||1));
+    const dates=dows.length?genDates(date,dows,weeks):[date];
+    const rows=[]; chosen.forEach(eid=>dates.forEach(dt=>rows.push({lot_id:lot,employee_id:eid,work_date:dt,created_by:ME.id})));
+    const {error}=await db.from('assignments').insert(rows);
     if(error){ toast(T('err_generic')+error.message); return; }
-    toast(`${chosen.length} ${T('toast_assigned')}`); SEL_DATE=date; CURRENT='dash'; render();
+    toast(`${rows.length} ${T('toast_assigned')}`); SEL_DATE=date; CURRENT='dash'; render();
   };
 }
+function genDates(start,dows,weeks){ const[y,m,d]=start.split('-').map(Number); const s=new Date(y,m-1,d); const set=new Set(dows); const out=[];
+  for(let i=0;i<weeks*7;i++){ const dt=new Date(s); dt.setDate(s.getDate()+i); if(set.has(dt.getDay())) out.push(ymd(dt)); } return out; }
 
 /* ================= EMPLOYEES helpers ================= */
 async function employeeList(){ const {data}=await db.from('profiles').select('id,full_name').eq('role','employee').eq('active',true).order('full_name'); return data||[]; }
@@ -670,13 +749,13 @@ let REP_FROM=todayStr(), REP_TO=todayStr();
 async function renderReports(v){
   const [{data:reports},{data:asgs},empMap]=await Promise.all([
     db.from('lot_reports').select('*, lots(name,client_name)').gte('work_date',REP_FROM).lte('work_date',REP_TO),
-    db.from('assignments').select('employee_id,lot_id,work_date,finished_at').gte('work_date',REP_FROM).lte('work_date',REP_TO),
+    db.from('assignments').select('employee_id,lot_id,work_date,arrived_at,finished_at').gte('work_date',REP_FROM).lte('work_date',REP_TO),
     employeeMap()]);
   const byLot={},byEmp={}; let totCars=0,totPreps=0;
   (reports||[]).forEach(r=>{ const k=r.lot_id; (byLot[k]=byLot[k]||{name:r.lots?.name||'',cars:0,preps:0,days:new Set()});
     byLot[k].cars+=r.cars_washed; byLot[k].preps+=r.preps; byLot[k].days.add(r.work_date); totCars+=r.cars_washed; totPreps+=r.preps; });
-  (asgs||[]).forEach(a=>{ if(!a.finished_at) return; (byEmp[a.employee_id]=byEmp[a.employee_id]||{days:new Set(),lots:new Set()});
-    byEmp[a.employee_id].days.add(a.work_date); byEmp[a.employee_id].lots.add(a.lot_id); });
+  (asgs||[]).forEach(a=>{ if(!a.finished_at) return; const b=(byEmp[a.employee_id]=byEmp[a.employee_id]||{days:new Set(),lots:new Set(),ms:0});
+    b.days.add(a.work_date); b.lots.add(a.lot_id); if(a.arrived_at) b.ms+=Math.max(0,new Date(a.finished_at)-new Date(a.arrived_at)); });
 
   v.innerHTML=`<h2 class="screen-title">${T('reports_title')}</h2>
    <div class="card">
@@ -686,7 +765,7 @@ async function renderReports(v){
    </div>
    <div class="card"><div class="row between"><span style="font-weight:800">${T('rep_total')}</span><span style="font-weight:800">🚗 ${totCars} · ✨ ${totPreps}</span></div></div>
    <div class="card"><h3>${T('rep_by_lot')}</h3>${Object.keys(byLot).length?Object.values(byLot).map(l=>`<div class="row between" style="padding:6px 0"><span>${esc(l.name)} <span class="muted" style="font-size:12px">(${l.days.size} ${T('u_days')})</span></span><span>🚗 ${l.cars} · ✨ ${l.preps}</span></div>`).join(''):`<div class="muted">${T('rep_empty')}</div>`}</div>
-   <div class="card"><h3>${T('rep_by_emp')}</h3>${Object.keys(byEmp).length?Object.entries(byEmp).map(([id,e])=>`<div class="row between" style="padding:6px 0"><span>${esc(empMap[id]||T('role_employee'))}</span><span class="muted" style="font-size:13px">${e.days.size} ${T('u_days')} · ${e.lots.size} ${T('u_lots')}</span></div>`).join(''):`<div class="muted">${T('rep_empty')}</div>`}<div class="muted" style="font-size:11px;margin-top:8px">${T('emp_cars_note')}</div></div>
+   <div class="card"><h3>${T('rep_by_emp')}</h3>${Object.keys(byEmp).length?Object.entries(byEmp).map(([id,e])=>`<div class="row between" style="padding:6px 0"><span>${esc(empMap[id]||T('role_employee'))}</span><span class="muted" style="font-size:13px">${e.days.size} ${T('u_days')} · ${e.lots.size} ${T('u_lots')} · ${(e.ms/3600000).toFixed(1)} ${T('u_hours')}</span></div>`).join(''):`<div class="muted">${T('rep_empty')}</div>`}<div class="muted" style="font-size:11px;margin-top:8px">${T('emp_cars_note')}</div></div>
    <button class="btn gold" id="r_csv" style="margin-bottom:12px">${T('btn_export')}</button>
    <div class="card"><div class="row between"><h3 style="margin:0">${T('docs_title')}</h3><button class="btn ghost" style="width:auto" id="r_zip">${T('btn_dl_all')}</button></div>
      <div id="docGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"><div class="empty" style="grid-column:1/-1"><span class="spin"></span></div></div></div>`;
@@ -737,18 +816,32 @@ function exportCSV(reports,empMap){
 
 /* ================= EMPLOYEE · MY DAY ================= */
 async function renderMyDay(v){
-  const {data:asgs}=await db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('employee_id',ME.id).gte('work_date',todayStr()).order('work_date').order('created_at');
-  const dates=[...new Set((asgs||[]).map(a=>a.work_date))]; let reports=[];
-  if(dates.length){ const {data}=await db.from('lot_reports').select('lot_id,work_date').in('work_date',dates); reports=data||[]; }
+  let asgs=[], reports=[], offline=false;
+  try{
+    const r1=await db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('employee_id',ME.id).gte('work_date',todayStr()).order('work_date').order('created_at');
+    if(r1.error) throw r1.error; asgs=r1.data||[];
+    const dates=[...new Set(asgs.map(a=>a.work_date))];
+    if(dates.length){ const r2=await db.from('lot_reports').select('lot_id,work_date').in('work_date',dates); reports=r2.data||[]; }
+    try{ localStorage.setItem('cw_myday_'+ME.id, JSON.stringify({asgs,reports})); }catch(_){}
+  }catch(e){
+    offline=true; try{ const c=JSON.parse(localStorage.getItem('cw_myday_'+ME.id)||'null'); if(c){ asgs=c.asgs||[]; reports=c.reports||[]; } }catch(_){}
+  }
   const hasRep=a=>reports.some(r=>r.lot_id===a.lot_id&&r.work_date===a.work_date);
-  v.innerHTML=`<h2 class="screen-title">${T('myday_title')}</h2><div id="jobs" class="stack"></div>`;
+  const pend=await pendingSet(); const pc=pend.size;
+  v.innerHTML=`<h2 class="screen-title">${T('myday_title')}</h2>
+    ${offline?`<div class="card" style="border-color:rgba(245,158,11,.4)"><span class="muted">${T('offline_cache')}</span></div>`:''}
+    ${pc?`<div class="card row between" style="border-color:rgba(245,158,11,.4)"><span class="pill s-amber">${pc} ${T('pending_banner')}</span><button class="btn ghost" style="width:auto" id="retry">${T('btn_retry')}</button></div>`:''}
+    <div id="jobs" class="stack"></div>`;
+  const rb=v.querySelector('#retry'); if(rb) rb.onclick=async()=>{ await flushQueue(false); };
   const wrap=v.querySelector('#jobs');
-  if(!asgs?.length){ wrap.innerHTML=`<div class="empty">${T('myday_empty')}</div>`; return; }
-  asgs.forEach(a=>{ const[cls,txt]=statusOf(a,hasRep(a)); const isToday=a.work_date===todayStr();
+  if(!asgs.length){ wrap.innerHTML=`<div class="empty">${T('myday_empty')}</div>`; return; }
+  asgs.forEach(a=>{ const isToday=a.work_date===todayStr(); const pending=pend.has(a.id);
+    let cls,txt; if(pending){ cls='s-amber'; txt=T('pending_send'); } else { const s=statusOf(a,hasRep(a)); cls=s[0]; txt=s[1]; }
     const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(a.lots?.name||'')}</h3><span class="pill ${cls}">${txt}</span></div>
       <div class="muted" style="font-size:13px;margin-top:4px">${isToday?T('today'):T('scheduled_for')+fmtDate(a.work_date)} · ${esc(a.lots?.address||a.lots?.region||'')}</div>
-      ${!isToday?`<div class="muted" style="font-size:12px;margin-top:6px">🔒 ${T('only_today')}</div>`:''}</div>`);
-    c.style.cursor='pointer'; c.onclick=()=>jobModal(a,isToday); wrap.appendChild(c);
+      ${!isToday&&!pending?`<div class="muted" style="font-size:12px;margin-top:6px">🔒 ${T('only_today')}</div>`:''}</div>`);
+    if(!pending){ c.style.cursor='pointer'; c.onclick=()=>jobModal(a,isToday); }
+    wrap.appendChild(c);
   });
 }
 function jobModal(a,isToday){
@@ -766,9 +859,9 @@ function jobModal(a,isToday){
   m.querySelector('#nav').onclick=()=>window.open(navUrl(lot),'_blank');
   m.querySelector('#waze').href=wazeUrl(lot);
   if(canArrive) m.querySelector('#arrive').onclick=async(e)=>{ const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('reading_loc');
-    const g=await getGPS(); const {error}=await db.from('assignments').update({arrived_at:new Date().toISOString(),arrived_lat:g?.lat,arrived_lng:g?.lng}).eq('id',a.id);
-    if(error){ toast(T('err_generic')+error.message); btn.disabled=false; btn.textContent=T('btn_arrived'); return; }
-    toast(T('toast_arrived')); back.remove(); render(); };
+    const g=await getGPS(); const rec={type:'arrive',assignment_id:a.id,arrived_at:new Date().toISOString(),lat:g?.lat,lng:g?.lng};
+    try{ const res=await submitAction(rec); toast(res==='queued'?T('toast_offline_saved'):T('toast_arrived')); back.remove(); render(); }
+    catch(err){ toast(T('err_generic')+(err.message||'')); btn.disabled=false; btn.textContent=T('btn_arrived'); } };
   if(canFinish) m.querySelector('#finish').onclick=()=>{ back.remove(); finishForm(a); };
 }
 function finishForm(a){
@@ -787,13 +880,14 @@ function finishForm(a){
     const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('sending');
     try{
       const blob=await compressImage(photoFile);
-      const path=`${a.lot_id}/${a.work_date}/${Date.now()}.jpg`;
-      const up=await db.storage.from('documents').upload(path,blob,{contentType:'image/jpeg',upsert:false}); if(up.error) throw up.error;
-      const cars=+f.querySelector('#f_cars').value||0, preps=+f.querySelector('#f_preps').value||0;
-      const rep=await db.from('lot_reports').upsert({lot_id:a.lot_id,work_date:a.work_date,cars_washed:cars,preps:preps,photo_path:path,note:f.querySelector('#f_note').value.trim(),submitted_by:ME.id,submitted_at:new Date().toISOString()},{onConflict:'lot_id,work_date'}); if(rep.error) throw rep.error;
       const g=await getGPS();
-      const fin=await db.from('assignments').update({finished_at:new Date().toISOString(),finished_lat:g?.lat,finished_lng:g?.lng}).eq('id',a.id); if(fin.error) throw fin.error;
-      back.remove(); toast(T('toast_sent')); render();
+      const rec={type:'finish',assignment_id:a.id,lot_id:a.lot_id,work_date:a.work_date,
+        cars:+f.querySelector('#f_cars').value||0, preps:+f.querySelector('#f_preps').value||0,
+        note:f.querySelector('#f_note').value.trim(), path:`${a.lot_id}/${a.work_date}/${Date.now()}.jpg`,
+        photoBlob:blob, submitted_by:ME.id, submitted_at:new Date().toISOString(),
+        finished_at:new Date().toISOString(), lat:g?.lat, lng:g?.lng};
+      const res=await submitAction(rec);
+      back.remove(); toast(res==='queued'?T('toast_offline_saved'):T('toast_sent')); render();
     }catch(err){ toast(T('err_generic')+(err.message||'')); btn.disabled=false; btn.textContent=T('btn_send_finish'); }
   };
 }
@@ -840,6 +934,7 @@ document.getElementById('hLang').onclick=langMenu;
 document.getElementById('lgTheme').onclick=()=>{ toggleTheme(); };
 document.getElementById('hTheme').onclick=()=>{ toggleTheme(); };
 applyLang(); applyTheme();
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 (async function init(){
   const {data:{session}}=await db.auth.getSession();
   if(session){ await boot(); } else { showLogin(); }
