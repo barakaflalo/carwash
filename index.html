@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org; font-src 'self'; object-src 'none'; base-uri 'none'" />
 <meta name="theme-color" content="#0a0a0b" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -116,6 +117,7 @@
   .badge{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
   .spin{width:18px;height:18px;border:2px solid rgba(150,150,150,.4);border-top-color:var(--gold);border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important;transition-duration:.001ms !important} }
 </style>
 </head>
 <body>
@@ -162,7 +164,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='0.6';
+const APP_VERSION='0.7';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -331,7 +333,22 @@ const DICT={
  edit_report:{he:'עריכת דיווח',en:'Edit report',ru:'Изменить отчёт',es:'Editar informe',ar:'تعديل التقرير'},
  u_hours:{he:'שע׳',en:'h',ru:'ч',es:'h',ar:'س'},
  assign_repeat:{he:'חזרה שבועית — בחר ימים (לא חובה):',en:'Weekly repeat — pick days (optional):',ru:'Повтор по дням (необязательно):',es:'Repetir por días (opcional):',ar:'تكرار أسبوعي — اختر الأيام (اختياري):'},
- weeks_ahead:{he:'למשך כמה שבועות',en:'For how many weeks',ru:'Сколько недель',es:'Cuántas semanas',ar:'لكم أسبوع'}
+ weeks_ahead:{he:'למשך כמה שבועות',en:'For how many weeks',ru:'Сколько недель',es:'Cuántas semanas',ar:'لكم أسبوع'},
+ share_app:{he:'שתף את האפליקציה',en:'Share the app',ru:'Поделиться приложением',es:'Compartir la app',ar:'مشاركة التطبيق'},
+ share_text:{he:'הצטרף לאפליקציית ניהול השטיפה — התקן מהקישור',en:'Join the car-wash app — install from this link',ru:'Подключайся к приложению — установи по ссылке',es:'Únete a la app — instala desde el enlace',ar:'انضم إلى تطبيق الغسيل — ثبّته من الرابط'},
+ link_copied:{he:'הקישור הועתק',en:'Link copied',ru:'Ссылка скопирована',es:'Enlace copiado',ar:'تم نسخ الرابط'},
+ feedback:{he:'שלח משוב',en:'Send feedback',ru:'Оставить отзыв',es:'Enviar comentarios',ar:'إرسال ملاحظات'},
+ privacy:{he:'מדיניות פרטיות',en:'Privacy policy',ru:'Политика конфиденциальности',es:'Política de privacidad',ar:'سياسة الخصوصية'},
+ guide_open:{he:'מדריך',en:'Guide',ru:'Руководство',es:'Guía',ar:'الدليل'},
+ skip:{he:'דלג',en:'Skip',ru:'Пропустить',es:'Saltar',ar:'تخطٍ'},
+ next:{he:'הבא',en:'Next',ru:'Далее',es:'Siguiente',ar:'التالي'},
+ ob_done:{he:'התחל',en:'Start',ru:'Начать',es:'Empezar',ar:'ابدأ'},
+ ob1_title:{he:'ברוכים הבאים',en:'Welcome',ru:'Добро пожаловать',es:'Bienvenido',ar:'مرحبًا'},
+ ob1_text:{he:'ניהול צוותי שטיפת רכבים בשטח — סידור עבודה, נוכחות ותיעוד רכבים.',en:'Manage field car-wash teams — scheduling, attendance and vehicle reporting.',ru:'Управление выездными бригадами автомойки — расписание, посещаемость и учёт.',es:'Gestión de equipos de lavado — horarios, asistencia y registro.',ar:'إدارة فرق غسيل السيارات — الجدولة والحضور والتوثيق.'},
+ ob2_title:{he:'לעובד',en:'For the worker',ru:'Для работника',es:'Para el trabajador',ar:'للعامل'},
+ ob2_text:{he:'רואה את הסידור, מנווט למגרש, מסמן "הגעתי", מצלם את המסמך ומדווח כמות רכבים והכנות.',en:'See your schedule, navigate to the lot, tap “arrived”, photograph the document and report the counts.',ru:'Смотрите расписание, доезжайте до площадки, отмечайте прибытие, фотографируйте документ и вносите числа.',es:'Ve tu horario, navega al sitio, marca “llegué”, fotografía el documento e ingresa las cantidades.',ar:'شاهد جدولك، توجّه إلى الموقع، اضغط "وصلت"، صوّر المستند وأدخل الأعداد.'},
+ ob3_title:{he:'עובד בכל מצב',en:'Works anywhere',ru:'Работает везде',es:'Funciona sin conexión',ar:'يعمل في أي مكان'},
+ ob3_text:{he:'גם בלי קליטה — הכול נשמר ונשלח כשהיא חוזרת. אפשר להתקין למסך הבית כמו אפליקציה.',en:'Even offline — everything is saved and sent when signal returns. Install it to your home screen like an app.',ru:'Даже офлайн — всё сохраняется и отправляется при связи. Установите на главный экран.',es:'Incluso sin conexión — todo se guarda y se envía al reconectar. Instálala en tu pantalla.',ar:'حتى دون اتصال — يُحفظ كل شيء ويُرسل عند عودة الشبكة. ثبّته على شاشتك الرئيسية.'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 let LANG=localStorage.getItem('cw_lang')||'he';
@@ -357,6 +374,29 @@ function langMenu(){
     r.onclick=()=>{ LANG=code; localStorage.setItem('cw_lang',LANG); back.remove(); applyLang(); if(ME){ buildNav(); render(); } };
     wrap.appendChild(r);
   });
+}
+
+/* ---- share / feedback / privacy / guide ---- */
+async function shareApp(){
+  const url=location.href.split('#')[0]; const text=T('share_text');
+  if(navigator.share){ try{ await navigator.share({title:T('app_title'),text,url}); return; }catch(_){ } }
+  try{ await navigator.clipboard.writeText(url); toast(T('link_copied')); }catch(_){ prompt(T('share_app'),url); }
+}
+function sendFeedback(){ location.href='mailto:appnest55@gmail.com?subject='+encodeURIComponent('משוב · '+T('app_title')); }
+function openPrivacy(){ window.open('privacy_policy.html','_blank'); }
+function showGuide(){ let i=0; const S=[['ob1_title','ob1_text'],['ob2_title','ob2_text'],['ob3_title','ob3_text']];
+  const m=el(`<div><div style="text-align:center"><div class="dot" style="width:56px;height:56px;margin:0 auto 14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--gold),var(--gold-soft))"></div>
+    <h3 id="ob_t" style="margin:0 0 8px"></h3><p id="ob_x" class="muted" style="min-height:66px"></p>
+    <div id="ob_dots" style="display:flex;gap:6px;justify-content:center;margin:14px 0"></div>
+    <button class="btn gold big" id="ob_next"></button>
+    <button class="btn ghost" id="ob_skip" style="margin-top:8px">${T('skip')}</button></div></div>`);
+  const back=openModal(m);
+  const paint=()=>{ m.querySelector('#ob_t').textContent=T(S[i][0]); m.querySelector('#ob_x').textContent=T(S[i][1]);
+    m.querySelector('#ob_next').textContent=i<S.length-1?T('next'):T('ob_done');
+    m.querySelector('#ob_dots').innerHTML=S.map((_,j)=>`<span style="width:8px;height:8px;border-radius:50%;background:${j===i?'var(--gold)':'var(--line)'}"></span>`).join(''); };
+  paint();
+  m.querySelector('#ob_next').onclick=()=>{ if(i<S.length-1){ i++; paint(); } else { localStorage.setItem('cw_onboarded','1'); back.remove(); } };
+  m.querySelector('#ob_skip').onclick=()=>{ localStorage.setItem('cw_onboarded','1'); back.remove(); };
 }
 
 /* ================= STATE ================= */
@@ -461,6 +501,7 @@ function openModal(inner){
   back.addEventListener('click',e=>{ if(e.target===back) back.remove(); });
   document.getElementById('modalRoot').appendChild(back); return back;
 }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ const ms=document.querySelectorAll('.modal-back'); if(ms.length) ms[ms.length-1].remove(); } });
 
 /* ================= AUTH ================= */
 async function doLogin(){
@@ -902,12 +943,14 @@ function renderSettings(v){
     <div class="card"><div class="row between"><span>${T('set_theme')}</span><button class="btn ghost" style="width:auto" id="thBtn">${THEME==='light'?T('theme_light'):T('theme_dark')}</button></div>
       <div class="row between" style="margin-top:10px"><span>${T('set_lang')}</span><button class="btn ghost" style="width:auto" id="lgBtn">${LANGS.find(l=>l[0]===LANG)[1]}</button></div></div>
     <button class="btn ghost" id="aboutBtn" style="margin-bottom:12px">ℹ️ ${T('about_open')}</button>
+    <button class="btn gold" id="shareBtn" style="margin-bottom:12px">📤 ${T('share_app')}</button>
     ${ME.role==='owner'?`<button class="btn ghost" id="mgrBtn" style="margin-bottom:12px">${T('manage_mgrs')}</button>`:''}
     <button class="btn danger" id="lo">${T('btn_logout')}</button>
     <div class="badge">AppNest · v${APP_VERSION}</div>`;
   v.querySelector('#thBtn').onclick=()=>{ toggleTheme(); render(); };
   v.querySelector('#lgBtn').onclick=langMenu;
   v.querySelector('#aboutBtn').onclick=aboutModal;
+  v.querySelector('#shareBtn').onclick=shareApp;
   const mb=v.querySelector('#mgrBtn'); if(mb) mb.onclick=managersModal;
   v.querySelector('#lo').onclick=logout;
 }
@@ -921,9 +964,19 @@ function aboutModal(){
       <div class="row between" style="padding:6px 0"><span class="muted">${T('about_plat_lbl')}</span><span>${T('about_plat_val')}</span></div>
     </div>
     <p class="muted" style="font-size:13px;margin:14px 2px">${T('about_desc')}</p>
+    <div class="stack">
+      <button class="btn gold" id="ab_share">📤 ${T('share_app')}</button>
+      <button class="btn ghost" id="ab_guide">📖 ${T('guide_open')}</button>
+      <button class="btn ghost" id="ab_privacy">🔒 ${T('privacy')}</button>
+      <button class="btn ghost" id="ab_feedback">✉️ ${T('feedback')}</button>
+    </div>
     <div class="badge">© AppNest 2026</div>
     <button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
   const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
+  m.querySelector('#ab_share').onclick=shareApp;
+  m.querySelector('#ab_guide').onclick=()=>{ back.remove(); showGuide(); };
+  m.querySelector('#ab_privacy').onclick=openPrivacy;
+  m.querySelector('#ab_feedback').onclick=sendFeedback;
 }
 
 /* ================= START ================= */
@@ -935,6 +988,8 @@ document.getElementById('lgTheme').onclick=()=>{ toggleTheme(); };
 document.getElementById('hTheme').onclick=()=>{ toggleTheme(); };
 applyLang(); applyTheme();
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+if(location.protocol==='file:'){ const e=document.getElementById('loginErr'); if(e) e.textContent='⚠ '+({he:'פתח דרך הקישור המאובטח (https), לא כקובץ מקומי',en:'Open via the secure https link, not as a local file'}[LANG]||'Open via the secure https link'); }
+if(!localStorage.getItem('cw_onboarded')){ showGuide(); }
 (async function init(){
   const {data:{session}}=await db.auth.getSession();
   if(session){ await boot(); } else { showLogin(); }

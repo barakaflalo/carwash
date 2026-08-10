@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0a0a0b" />
+<title>מדיניות פרטיות · ניהול שטיפת רכבים</title>
+<style>
+  :root{--bg:#0a0a0b;--surface:#141416;--line:#2a2a30;--text:#f5f5f2;--muted:#9a9aa2;--gold:#d4af37;--gold-soft:#b8952e}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Hebrew",Arial,sans-serif;line-height:1.65}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800}
+  .dot{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--gold),var(--gold-soft))}
+  .toggle{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+  h1{font-size:22px;margin:8px 0 4px}
+  .sub{color:var(--gold);font-weight:700;font-size:14px;margin-bottom:22px}
+  h2{font-size:16px;color:var(--gold);margin:24px 0 6px}
+  p,li{color:#e8e8e4}
+  .muted{color:var(--muted);font-size:13px}
+  a{color:var(--gold)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px}
+  [data-lang]{display:none}
+  body.en{direction:ltr}
+  body.en [data-lang="en"]{display:block}
+  body.he [data-lang="he"]{display:block}
+</style>
+</head>
+<body class="he">
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><div class="dot"></div><span>AppNest</span></div>
+    <button class="toggle" id="t">English</button>
+  </div>
+
+  <!-- Hebrew -->
+  <div data-lang="he">
+    <h1>מדיניות פרטיות</h1>
+    <div class="sub">אפליקציית ניהול שטיפת רכבים · AppNest</div>
+    <p class="muted">עודכן: 2026. אפליקציה זו היא כלי עבודה לניהול צוותי שטיפה בשטח, ומופעלת על ידי העסק שהתקין אותה ("המעסיק").</p>
+
+    <div class="card">
+    <h2>איזה מידע נאסף</h2>
+    <ul>
+      <li>שם משתמש ושם מלא שהמנהל יוצר עבורך.</li>
+      <li>סידור העבודה שלך (מגרשים ותאריכים).</li>
+      <li>בעת לחיצה על "הגעתי"/"סיימתי" — המיקום (GPS) והשעה של אותו רגע בלבד. אין מעקב מיקום רציף ואין מעקב ברקע.</li>
+      <li>צילום מסמך המגרש שאתה מעלה, וכמות הרכבים וההכנות שאתה מדווח.</li>
+    </ul>
+
+    <h2>איפה המידע נשמר ומי רואה אותו</h2>
+    <p>מאחר שזהו כלי עבודה משותף, המידע נשמר בענן (בשירות Supabase) ולא רק על המכשיר. המידע נגיש למעסיק ולמנהלים שהוא הגדיר, לצורך ניהול העבודה והנהלת החשבונות. אין פרסומות, אין מכירת מידע, ואין מעקב או אנליטיקה של צד שלישי.</p>
+
+    <h2>שירותים חיצוניים</h2>
+    <ul>
+      <li>אחסון ומסד נתונים — Supabase.</li>
+      <li>איתור מיקום מגרש מכתובת — OpenStreetMap (רק לגבי כתובות מגרשים, לא לגביך).</li>
+      <li>ניווט — נפתח על ידך ב‑Google Maps או Waze.</li>
+    </ul>
+
+    <h2>אבטחה</h2>
+    <p>הסיסמאות נשמרות מוצפנות אצל ספק ההזדהות ואינן גלויות לאיש, גם לא למנהל (מנהל יכול לאפס סיסמה, לא לראות אותה). הגישה מוגבלת לפי תפקיד — עובד רואה רק את המשימות שלו.</p>
+
+    <h2>שליטה במידע ויצירת קשר</h2>
+    <p>לבקשות עיון/תיקון/מחיקה של מידע, פנה למעסיק שלך או אלינו: <a href="mailto:appnest55@gmail.com">appnest55@gmail.com</a>.</p>
+    </div>
+    <p class="muted" style="margin-top:18px">© AppNest 2026 · Barak Aflalo</p>
+  </div>
+
+  <!-- English -->
+  <div data-lang="en">
+    <h1>Privacy Policy</h1>
+    <div class="sub">Car-Wash Field Management · AppNest</div>
+    <p class="muted">Updated: 2026. This app is a work tool for managing field wash teams, operated by the business that installed it (the “employer”).</p>
+
+    <div class="card">
+    <h2>What we collect</h2>
+    <ul>
+      <li>A username and full name created for you by your manager.</li>
+      <li>Your work schedule (lots and dates).</li>
+      <li>When you tap “arrived”/“finished” — the location (GPS) and time of that moment only. There is no continuous or background location tracking.</li>
+      <li>The lot-document photo you upload, and the car/prep counts you report.</li>
+    </ul>
+
+    <h2>Where it is stored and who sees it</h2>
+    <p>Because this is a shared work tool, data is stored in the cloud (Supabase), not only on your device. It is accessible to the employer and the managers they designate, for work scheduling and accounting. There are no ads, no sale of data, and no third-party tracking or analytics.</p>
+
+    <h2>External services</h2>
+    <ul>
+      <li>Storage and database — Supabase.</li>
+      <li>Turning a lot address into a map location — OpenStreetMap (for lot addresses only, not for you).</li>
+      <li>Navigation — opened by you in Google Maps or Waze.</li>
+    </ul>
+
+    <h2>Security</h2>
+    <p>Passwords are stored encrypted by the authentication provider and are not visible to anyone, including managers (a manager can reset a password, not view it). Access is role-restricted — a worker sees only their own tasks.</p>
+
+    <h2>Your control &amp; contact</h2>
+    <p>For access, correction or deletion requests, contact your employer or us at <a href="mailto:appnest55@gmail.com">appnest55@gmail.com</a>.</p>
+    </div>
+    <p class="muted" style="margin-top:18px">© AppNest 2026 · Barak Aflalo</p>
+  </div>
+</div>
+<script>
+  const b=document.body, t=document.getElementById('t');
+  t.onclick=()=>{ const en=b.classList.toggle('en'); b.classList.toggle('he',!en); b.dir=en?'ltr':'rtl'; document.documentElement.lang=en?'en':'he'; t.textContent=en?'עברית':'English'; };
+</script>
+</body>
+</html>
