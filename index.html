@@ -125,6 +125,7 @@
 <!-- ============ LOGIN ============ -->
 <section id="loginScreen" class="login-wrap">
   <div class="login-top">
+    <button class="iconbtn" id="lgShare">📤</button>
     <button class="iconbtn" id="lgLang">🌐</button>
     <button class="iconbtn" id="lgTheme">🌙</button>
   </div>
@@ -143,11 +144,22 @@
   </div>
 </section>
 
+<!-- ============ LOCK ============ -->
+<section id="lockScreen" class="login-wrap hidden">
+  <div class="login-brand"><div class="dot"></div><h1 data-t="lock_title">הזן קוד</h1></div>
+  <div class="card">
+    <input id="pinInput" type="password" inputmode="numeric" placeholder="••••" style="text-align:center;font-size:24px;letter-spacing:8px" />
+    <button id="pinBtn" class="btn gold big" style="margin-top:12px" data-t="lock_unlock">פתח</button>
+    <p id="pinErr" style="text-align:center;color:var(--red);margin:10px 0 0"></p>
+  </div>
+</section>
+
 <!-- ============ APP ============ -->
 <div id="app" class="app hidden">
   <header class="top">
     <div class="brand"><div class="dot"></div><div>AppNest <small>·</small></div></div>
     <div class="hbtns">
+      <button class="iconbtn" id="hShare">📤</button>
       <button class="iconbtn" id="hLang">🌐</button>
       <button class="iconbtn" id="hTheme">🌙</button>
     </div>
@@ -164,7 +176,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='0.7';
+const APP_VERSION='0.8';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -348,7 +360,27 @@ const DICT={
  ob2_title:{he:'לעובד',en:'For the worker',ru:'Для работника',es:'Para el trabajador',ar:'للعامل'},
  ob2_text:{he:'רואה את הסידור, מנווט למגרש, מסמן "הגעתי", מצלם את המסמך ומדווח כמות רכבים והכנות.',en:'See your schedule, navigate to the lot, tap “arrived”, photograph the document and report the counts.',ru:'Смотрите расписание, доезжайте до площадки, отмечайте прибытие, фотографируйте документ и вносите числа.',es:'Ve tu horario, navega al sitio, marca “llegué”, fotografía el documento e ingresa las cantidades.',ar:'شاهد جدولك، توجّه إلى الموقع، اضغط "وصلت"، صوّر المستند وأدخل الأعداد.'},
  ob3_title:{he:'עובד בכל מצב',en:'Works anywhere',ru:'Работает везде',es:'Funciona sin conexión',ar:'يعمل في أي مكان'},
- ob3_text:{he:'גם בלי קליטה — הכול נשמר ונשלח כשהיא חוזרת. אפשר להתקין למסך הבית כמו אפליקציה.',en:'Even offline — everything is saved and sent when signal returns. Install it to your home screen like an app.',ru:'Даже офлайн — всё сохраняется и отправляется при связи. Установите на главный экран.',es:'Incluso sin conexión — todo se guarda y se envía al reconectar. Instálala en tu pantalla.',ar:'حتى دون اتصال — يُحفظ كل شيء ويُرسل عند عودة الشبكة. ثبّته على شاشتك الرئيسية.'}
+ ob3_text:{he:'גם בלי קליטה — הכול נשמר ונשלח כשהיא חוזרת. אפשר להתקין למסך הבית כמו אפליקציה.',en:'Even offline — everything is saved and sent when signal returns. Install it to your home screen like an app.',ru:'Даже офлайн — всё сохраняется и отправляется при связи. Установите на главный экран.',es:'Incluso sin conexión — todo se guarda y se envía al reconectar. Instálala en tu pantalla.',ar:'حتى دون اتصال — يُحفظ كل شيء ويُرسل عند عودة الشبكة. ثبّته على شاشتك الرئيسية.'},
+ all_regions:{he:'כל האזורים',en:'All regions',ru:'Все районы',es:'Todas las regiones',ar:'كل المناطق'},
+ region_none:{he:'ללא אזור',en:'No region',ru:'Без района',es:'Sin región',ar:'بدون منطقة'},
+ emps_active:{he:'עובדים פעילים',en:'Active staff',ru:'Активные',es:'Activos',ar:'الموظفون النشطون'},
+ emps_inactive:{he:'עובדים לא פעילים',en:'Inactive staff',ru:'Неактивные',es:'Inactivos',ar:'غير النشطين'},
+ lock_on:{he:'נעילת קוד',en:'PIN lock',ru:'Блокировка PIN',es:'Bloqueo PIN',ar:'قفل PIN'},
+ lock_title:{he:'הזן קוד',en:'Enter PIN',ru:'Введите PIN',es:'Introduce el PIN',ar:'أدخل الرمز'},
+ lock_unlock:{he:'פתח',en:'Unlock',ru:'Открыть',es:'Desbloquear',ar:'فتح'},
+ lock_wrong:{he:'קוד שגוי',en:'Wrong PIN',ru:'Неверный PIN',es:'PIN incorrecto',ar:'رمز خاطئ'},
+ lock_new:{he:'קוד חדש (4 ספרות ומעלה)',en:'New PIN (4+ digits)',ru:'Новый PIN (4+ цифр)',es:'Nuevo PIN (4+ dígitos)',ar:'رمز جديد (4+ أرقام)'},
+ lock_current:{he:'הזן קוד נוכחי',en:'Enter current PIN',ru:'Текущий PIN',es:'PIN actual',ar:'الرمز الحالي'},
+ toast_lock_on:{he:'נעילה הופעלה',en:'Lock enabled',ru:'Блокировка включена',es:'Bloqueo activado',ar:'تم تفعيل القفل'},
+ toast_lock_off:{he:'נעילה בוטלה',en:'Lock disabled',ru:'Блокировка выключена',es:'Bloqueo desactivado',ar:'تم إلغاء القفل'},
+ bin_open:{he:'🗑️ סל מיחזור',en:'🗑️ Recycle bin',ru:'🗑️ Корзина',es:'🗑️ Papelera',ar:'🗑️ سلة المحذوفات'},
+ bin_title:{he:'סל מיחזור',en:'Recycle bin',ru:'Корзина',es:'Papelera',ar:'سلة المحذوفات'},
+ bin_empty:{he:'הסל ריק.',en:'The bin is empty.',ru:'Корзина пуста.',es:'La papelera está vacía.',ar:'السلة فارغة.'},
+ bin_lots:{he:'מגרשים שנמחקו',en:'Deleted lots',ru:'Удалённые площадки',es:'Sitios eliminados',ar:'مواقع محذوفة'},
+ bin_asgs:{he:'שיבוצים שנמחקו',en:'Deleted assignments',ru:'Удалённые назначения',es:'Asignaciones eliminadas',ar:'تعيينات محذوفة'},
+ restore:{he:'שחזר',en:'Restore',ru:'Восстановить',es:'Restaurar',ar:'استرجاع'},
+ delete_forever:{he:'מחק לצמיתות',en:'Delete forever',ru:'Удалить навсегда',es:'Borrar definitivamente',ar:'حذف نهائي'},
+ toast_restored:{he:'שוחזר',en:'Restored',ru:'Восстановлено',es:'Restaurado',ar:'تمت الاستعادة'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 let LANG=localStorage.getItem('cw_lang')||'he';
@@ -558,50 +590,61 @@ async function render(){
 }
 
 /* ================= MANAGER · DASHBOARD ================= */
+let DASH_FROM=todayStr(), DASH_TO=todayStr(), DASH_REGION='';
 async function renderDash(v){
   const [{data:asgs},{data:reports}]=await Promise.all([
-    db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('work_date',SEL_DATE).order('created_at'),
-    db.from('lot_reports').select('*').eq('work_date',SEL_DATE)]);
+    db.from('assignments').select('*, lots(name,address,region,lat,lng)').is('deleted_at',null).gte('work_date',DASH_FROM).lte('work_date',DASH_TO).order('work_date').order('created_at'),
+    db.from('lot_reports').select('*').gte('work_date',DASH_FROM).lte('work_date',DASH_TO)]);
   const empMap=await employeeMap();
-  const repByLot={}; (reports||[]).forEach(r=>repByLot[r.lot_id]=r);
-  const byLot={}; (asgs||[]).forEach(a=>{ (byLot[a.lot_id]=byLot[a.lot_id]||{lot:a.lots,rows:[]}).rows.push(a); });
-  const redCount=(asgs||[]).filter(a=>!a.finished_at&&a.work_date<todayStr()).length;
+  let rows=(asgs||[]); if(DASH_REGION) rows=rows.filter(a=>(a.lots?.region||'')===DASH_REGION);
+  const repBy={}; (reports||[]).forEach(r=>repBy[r.lot_id+'|'+r.work_date]=r);
+  const byDate={}; rows.forEach(a=>{ (byDate[a.work_date]=byDate[a.work_date]||{}); (byDate[a.work_date][a.lot_id]=byDate[a.work_date][a.lot_id]||{lot:a.lots,rows:[]}).rows.push(a); });
+  const redCount=rows.filter(a=>!a.finished_at&&a.work_date<todayStr()).length;
+  const REG=[['',T('all_regions')],['north',T('r_north')],['haifa',T('r_haifa')],['sharon',T('r_sharon')],['center',T('r_center')],['jlm',T('r_jlm')],['south',T('r_south')]];
   v.innerHTML=`<h2 class="screen-title">${T('dash_title')}</h2>
-    <div class="card row between">
-      <button class="btn ghost" style="width:auto" id="prevD">‹</button>
-      <div style="text-align:center"><div style="font-weight:800">${SEL_DATE===todayStr()?T('today')+' · ':''}${SEL_DATE}</div>
-        <div class="muted" style="font-size:12px">${(asgs||[]).length} ${T('u_assignments')} · ${Object.keys(byLot).length} ${T('u_lots')}</div></div>
-      <button class="btn ghost" style="width:auto" id="nextD">›</button></div>
-    ${redCount?`<div class="card" style="border-color:rgba(239,68,68,.4)"><span class="pill s-red">${redCount} ${T('red_alert')}</span></div>`:''}
-    <div id="lotList"></div>`;
-  v.querySelector('#prevD').onclick=()=>{ SEL_DATE=shiftDate(SEL_DATE,-1); render(); };
-  v.querySelector('#nextD').onclick=()=>{ SEL_DATE=shiftDate(SEL_DATE,1); render(); };
-  const list=v.querySelector('#lotList');
-  if(!Object.keys(byLot).length){ list.innerHTML=`<div class="empty">${T('dash_empty')}</div>`; return; }
-  for(const lotId in byLot){
-    const {lot,rows}=byLot[lotId], rep=repByLot[lotId];
-    const c=el('<div class="card"></div>');
-    c.innerHTML=`<div class="row between"><h3 style="margin:0">${esc(lot?.name||'')}</h3><span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span></div>
-      <div class="stack" style="margin-top:8px">
-        ${rows.map(a=>{ const[cls,txt]=statusOf(a,!!rep);
-          const d=a.arrived_at?distM(a.arrived_lat,a.arrived_lng,lot?.lat,lot?.lng):null; const far=(d!=null&&d>GEOFENCE_M);
-          return `<div class="row between">
-            <span class="row" style="gap:6px">${esc(empMap[a.employee_id]||T('role_employee'))}${far?`<span class="pill s-amber">⚠︎ ${T('far_flag')} ${d}m</span>`:''}</span>
-            <span class="row" style="gap:8px">${a.arrived_at?`<span class="muted" style="font-size:11px">${fmtTime(a.arrived_at)}${a.finished_at?'–'+fmtTime(a.finished_at):''}</span>`:''}
-            <span class="pill ${cls}">${txt}</span>
-            <button class="btn ghost" style="width:auto;padding:4px 9px" data-del="${a.id}">🗑️</button></span></div>`; }).join('')}
-      </div>
-      ${rep?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-        <div class="row between"><span>🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}</span>
-        <span class="row" style="gap:6px">${rep.photo_path?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-photo="${esc(rep.photo_path)}">📄</button>`:''}<button class="btn ghost" style="width:auto;padding:6px 10px" data-editrep="1">✏️</button></span></div>
-        ${rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`:''}`;
-    const pb=c.querySelector('[data-photo]'); if(pb) pb.onclick=()=>viewPhoto(pb.dataset.photo,rep.note);
-    const eb=c.querySelector('[data-editrep]'); if(eb) eb.onclick=()=>editReportForm(rep);
-    c.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm(T('del_confirm'))) return;
-      const {error}=await db.from('assignments').delete().eq('id',b.dataset.del);
-      if(error){ toast(T('err_generic')+error.message); return; } toast(T('toast_deleted')); render(); });
-    list.appendChild(c);
-  }
+   <div class="card">
+     <div class="row" style="gap:8px"><label class="field" style="flex:1;margin:0"><span>${T('f_from')}</span><input type="date" id="d_from" value="${DASH_FROM}"/></label>
+       <label class="field" style="flex:1;margin:0"><span>${T('f_to')}</span><input type="date" id="d_to" value="${DASH_TO}"/></label></div>
+     <div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost" id="d_today">${T('today')}</button><button class="btn ghost" id="d_week">${T('q_week')}</button><button class="btn ghost" id="d_month">${T('q_month')}</button></div>
+     <label class="field" style="margin:12px 0 0"><span>${T('f_region')}</span><select id="d_region">${REG.map(([val,lab])=>`<option value="${val}" ${DASH_REGION===val?'selected':''}>${lab}</option>`).join('')}</select></label>
+   </div>
+   ${redCount?`<div class="card" style="border-color:rgba(239,68,68,.4)"><span class="pill s-red">${redCount} ${T('red_alert')}</span></div>`:''}
+   <div id="dashList"></div>`;
+  const rerun=()=>{ DASH_FROM=v.querySelector('#d_from').value; DASH_TO=v.querySelector('#d_to').value; DASH_REGION=v.querySelector('#d_region').value; render(); };
+  v.querySelector('#d_from').onchange=rerun; v.querySelector('#d_to').onchange=rerun; v.querySelector('#d_region').onchange=rerun;
+  v.querySelector('#d_today').onclick=()=>{ DASH_FROM=DASH_TO=todayStr(); render(); };
+  v.querySelector('#d_week').onclick=()=>{ DASH_TO=todayStr(); DASH_FROM=shiftDate(todayStr(),-6); render(); };
+  v.querySelector('#d_month').onclick=()=>{ DASH_TO=todayStr(); DASH_FROM=shiftDate(todayStr(),-29); render(); };
+  const list=v.querySelector('#dashList');
+  const dates=Object.keys(byDate).sort();
+  if(!dates.length){ list.innerHTML=`<div class="empty">${T('dash_empty')}</div>`; return; }
+  dates.forEach(dt=>{
+    list.appendChild(el(`<div style="margin:16px 2px 8px;font-weight:800;color:var(--gold)">${dt===todayStr()?T('today')+' · ':''}${dt}</div>`));
+    const lots=byDate[dt];
+    for(const lotId in lots){ const {lot,rows:lrows}=lots[lotId], rep=repBy[lotId+'|'+dt];
+      const c=el('<div class="card"></div>');
+      c.innerHTML=`<div class="row between"><h3 style="margin:0">${esc(lot?.name||'')}</h3><span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span></div>
+        <div class="stack" style="margin-top:8px">
+          ${lrows.map(a=>{ const[cls,txt]=statusOf(a,!!rep);
+            const d=a.arrived_at?distM(a.arrived_lat,a.arrived_lng,lot?.lat,lot?.lng):null; const far=(d!=null&&d>GEOFENCE_M);
+            return `<div class="row between">
+              <span class="row" style="gap:6px">${esc(empMap[a.employee_id]||T('role_employee'))}${far?`<span class="pill s-amber">⚠︎ ${T('far_flag')} ${d}m</span>`:''}</span>
+              <span class="row" style="gap:8px">${a.arrived_at?`<span class="muted" style="font-size:11px">${fmtTime(a.arrived_at)}${a.finished_at?'–'+fmtTime(a.finished_at):''}</span>`:''}
+              <span class="pill ${cls}">${txt}</span>
+              <button class="btn ghost" style="width:auto;padding:4px 9px" data-del="${a.id}">🗑️</button></span></div>`; }).join('')}
+        </div>
+        ${rep?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <div class="row between"><span>🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}</span>
+          <span class="row" style="gap:6px">${rep.photo_path?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-photo="${esc(rep.photo_path)}">📄</button>`:''}<button class="btn ghost" style="width:auto;padding:6px 10px" data-editrep="1">✏️</button></span></div>
+          ${rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`:''}`;
+      const pb=c.querySelector('[data-photo]'); if(pb) pb.onclick=()=>viewPhoto(pb.dataset.photo,rep.note);
+      const eb=c.querySelector('[data-editrep]'); if(eb) eb.onclick=()=>editReportForm(rep);
+      c.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm(T('del_confirm'))) return;
+        const {error}=await db.from('assignments').update({deleted_at:new Date().toISOString()}).eq('id',b.dataset.del);
+        if(error){ toast(T('err_generic')+error.message); return; } toast(T('toast_deleted')); render(); });
+      list.appendChild(c);
+    }
+  });
 }
 async function viewPhoto(path,note){
   const {data,error}=await db.storage.from('documents').createSignedUrl(path,3600);
@@ -624,15 +667,21 @@ function editReportForm(rep){
 }
 
 /* ================= MANAGER · LOTS ================= */
+let LOTS_REGION='';
 async function renderLots(v){
-  const {data:lots}=await db.from('lots').select('*').order('name');
+  const {data:lots}=await db.from('lots').select('*').is('deleted_at',null).order('name');
+  const REG=[['',T('all_regions')],['north',T('r_north')],['haifa',T('r_haifa')],['sharon',T('r_sharon')],['center',T('r_center')],['jlm',T('r_jlm')],['south',T('r_south')],['__none__',T('region_none')]];
+  let show=(lots||[]); if(LOTS_REGION==='__none__') show=show.filter(l=>!l.region); else if(LOTS_REGION) show=show.filter(l=>l.region===LOTS_REGION);
   v.innerHTML=`<h2 class="screen-title">${T('lots_title')}</h2>
-    <button class="btn gold" id="addLot" style="margin-bottom:14px">${T('btn_add_lot')}</button><div id="lotCards"></div>`;
+    <button class="btn gold" id="addLot" style="margin-bottom:12px">${T('btn_add_lot')}</button>
+    <label class="field"><span>${T('f_region')}</span><select id="lreg">${REG.map(([val,lab])=>`<option value="${val}" ${LOTS_REGION===val?'selected':''}>${lab}</option>`).join('')}</select></label>
+    <div id="lotCards"></div>`;
   v.querySelector('#addLot').onclick=()=>lotForm(null);
+  v.querySelector('#lreg').onchange=e=>{ LOTS_REGION=e.target.value; render(); };
   const wrap=v.querySelector('#lotCards');
-  if(!lots?.length){ wrap.innerHTML=`<div class="empty">${T('lots_empty')}</div>`; return; }
-  lots.forEach(l=>{ const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l.name)}</h3>
-    <span class="muted" style="font-size:12px">${l.lat&&l.lng?'📍 ':''}${esc(l.region||'')}</span></div>
+  if(!show.length){ wrap.innerHTML=`<div class="empty">${T('lots_empty')}</div>`; return; }
+  show.forEach(l=>{ const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l.name)}</h3>
+    <span class="muted" style="font-size:12px">${l.lat&&l.lng?'📍 ':''}${l.region?esc(l.region):'⚠ '+T('region_none')}</span></div>
     <div class="muted" style="font-size:13px;margin-top:4px">${esc(l.client_name||'')} ${l.address?'· '+esc(l.address):''}</div></div>`);
     c.style.cursor='pointer'; c.onclick=()=>lotForm(l); wrap.appendChild(c); });
 }
@@ -663,13 +712,13 @@ function lotForm(existing){
     back.remove(); toast(existing?T('toast_saved'):T('toast_lot_added')); render();
   };
   if(existing) f.querySelector('#l_del').onclick=async()=>{ if(!confirm(T('del_lot_confirm'))) return;
-    const {error}=await db.from('lots').delete().eq('id',existing.id);
+    const {error}=await db.from('lots').update({deleted_at:new Date().toISOString()}).eq('id',existing.id);
     if(error){ toast(T('err_generic')+error.message); return; } back.remove(); toast(T('toast_deleted')); render(); };
 }
 
 /* ================= MANAGER · ASSIGN ================= */
 async function renderAssign(v){
-  const [{data:lots},emps]=await Promise.all([db.from('lots').select('*').eq('active',true).order('name'),employeeList()]);
+  const [{data:lots},emps]=await Promise.all([db.from('lots').select('*').eq('active',true).is('deleted_at',null).order('name'),employeeList()]);
   v.innerHTML=`<h2 class="screen-title">${T('assign_title')}</h2><div class="card">
     <label class="field"><span>${T('f_date')}</span><input type="date" id="a_date" value="${SEL_DATE}"/></label>
     <label class="field"><span>${T('nav_lots')}</span><select id="a_lot"><option value="">${T('choose_lot')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></label>
@@ -690,7 +739,7 @@ async function renderAssign(v){
     const rows=[]; chosen.forEach(eid=>dates.forEach(dt=>rows.push({lot_id:lot,employee_id:eid,work_date:dt,created_by:ME.id})));
     const {error}=await db.from('assignments').insert(rows);
     if(error){ toast(T('err_generic')+error.message); return; }
-    toast(`${rows.length} ${T('toast_assigned')}`); SEL_DATE=date; CURRENT='dash'; render();
+    toast(`${rows.length} ${T('toast_assigned')}`); SEL_DATE=date; DASH_FROM=DASH_TO=date; DASH_REGION=''; CURRENT='dash'; render();
   };
 }
 function genDates(start,dows,weeks){ const[y,m,d]=start.split('-').map(Number); const s=new Date(y,m-1,d); const set=new Set(dows); const out=[];
@@ -701,14 +750,16 @@ async function employeeList(){ const {data}=await db.from('profiles').select('id
 async function employeeMap(){ const l=await employeeList(); const m={}; l.forEach(e=>m[e.id]=e.full_name); return m; }
 async function renderEmps(v){
   const {data:emps}=await db.from('profiles').select('id,full_name,username,active').eq('role','employee').order('full_name');
+  const active=(emps||[]).filter(e=>e.active), inactive=(emps||[]).filter(e=>!e.active);
   v.innerHTML=`<h2 class="screen-title">${T('emps_title')}</h2>
     <button class="btn gold" id="addEmp" style="margin-bottom:14px">${T('add_emp')}</button>
-    <div class="stack" id="empList"></div>`;
+    <div id="empActive"></div><div id="empInactive"></div>`;
   v.querySelector('#addEmp').onclick=empForm;
-  const wrap=v.querySelector('#empList');
-  if(!emps?.length){ wrap.innerHTML=`<div class="empty">${T('emps_empty')}</div>`; return; }
-  emps.forEach(e=>{ const c=el(`<div class="card row between" style="margin:0;cursor:pointer"><span>${esc(e.full_name||T('role_employee'))} <span class="muted" style="font-size:12px">@${esc(e.username||'')}</span></span><span class="pill ${e.active?'s-green':'s-grey'}">${e.active?T('active'):T('deactivated')}</span></div>`);
-    c.onclick=()=>empDetail(e.id); wrap.appendChild(c); });
+  const row=e=>{ const c=el(`<div class="card row between" style="margin:0 0 10px;cursor:pointer"><span>${esc(e.full_name||T('role_employee'))} <span class="muted" style="font-size:12px">@${esc(e.username||'')}</span></span><span class="pill ${e.active?'s-green':'s-grey'}">${e.active?T('active'):T('deactivated')}</span></div>`); c.onclick=()=>empDetail(e.id); return c; };
+  const aw=v.querySelector('#empActive'), iw=v.querySelector('#empInactive');
+  if(!active.length&&!inactive.length){ aw.innerHTML=`<div class="empty">${T('emps_empty')}</div>`; return; }
+  aw.innerHTML=`<div style="margin:6px 2px 8px;font-weight:800;color:var(--gold)">${T('emps_active')} (${active.length})</div>`; active.forEach(e=>aw.appendChild(row(e)));
+  if(inactive.length){ iw.innerHTML=`<div style="margin:18px 2px 8px;font-weight:800;color:var(--muted)">${T('emps_inactive')} (${inactive.length})</div>`; inactive.forEach(e=>iw.appendChild(row(e))); }
 }
 async function empDetail(id){
   const {data:e}=await db.from('profiles').select('*').eq('id',id).single(); if(!e) return;
@@ -790,7 +841,7 @@ let REP_FROM=todayStr(), REP_TO=todayStr();
 async function renderReports(v){
   const [{data:reports},{data:asgs},empMap]=await Promise.all([
     db.from('lot_reports').select('*, lots(name,client_name)').gte('work_date',REP_FROM).lte('work_date',REP_TO),
-    db.from('assignments').select('employee_id,lot_id,work_date,arrived_at,finished_at').gte('work_date',REP_FROM).lte('work_date',REP_TO),
+    db.from('assignments').select('employee_id,lot_id,work_date,arrived_at,finished_at').is('deleted_at',null).gte('work_date',REP_FROM).lte('work_date',REP_TO),
     employeeMap()]);
   const byLot={},byEmp={}; let totCars=0,totPreps=0;
   (reports||[]).forEach(r=>{ const k=r.lot_id; (byLot[k]=byLot[k]||{name:r.lots?.name||'',cars:0,preps:0,days:new Set()});
@@ -859,7 +910,7 @@ function exportCSV(reports,empMap){
 async function renderMyDay(v){
   let asgs=[], reports=[], offline=false;
   try{
-    const r1=await db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('employee_id',ME.id).gte('work_date',todayStr()).order('work_date').order('created_at');
+    const r1=await db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('employee_id',ME.id).is('deleted_at',null).gte('work_date',todayStr()).order('work_date').order('created_at');
     if(r1.error) throw r1.error; asgs=r1.data||[];
     const dates=[...new Set(asgs.map(a=>a.work_date))];
     if(dates.length){ const r2=await db.from('lot_reports').select('lot_id,work_date').in('work_date',dates); reports=r2.data||[]; }
@@ -941,16 +992,20 @@ function renderSettings(v){
     <div class="card"><div class="row between"><span>${T('set_user')}</span><span class="muted">${esc(ME.full_name||'')}</span></div>
       <div class="row between" style="margin-top:8px"><span>${T('set_role')}</span><span class="muted">${roleLabel(ME.role)}</span></div></div>
     <div class="card"><div class="row between"><span>${T('set_theme')}</span><button class="btn ghost" style="width:auto" id="thBtn">${THEME==='light'?T('theme_light'):T('theme_dark')}</button></div>
-      <div class="row between" style="margin-top:10px"><span>${T('set_lang')}</span><button class="btn ghost" style="width:auto" id="lgBtn">${LANGS.find(l=>l[0]===LANG)[1]}</button></div></div>
+      <div class="row between" style="margin-top:10px"><span>${T('set_lang')}</span><button class="btn ghost" style="width:auto" id="lgBtn">${LANGS.find(l=>l[0]===LANG)[1]}</button></div>
+      <div class="row between" style="margin-top:10px"><span>${T('lock_on')}</span><input type="checkbox" id="pinTgl" ${hasPin()?'checked':''} style="width:22px;height:22px"/></div></div>
     <button class="btn ghost" id="aboutBtn" style="margin-bottom:12px">ℹ️ ${T('about_open')}</button>
     <button class="btn gold" id="shareBtn" style="margin-bottom:12px">📤 ${T('share_app')}</button>
+    ${isManager(ME.role)?`<button class="btn ghost" id="binBtn" style="margin-bottom:12px">${T('bin_open')}</button>`:''}
     ${ME.role==='owner'?`<button class="btn ghost" id="mgrBtn" style="margin-bottom:12px">${T('manage_mgrs')}</button>`:''}
     <button class="btn danger" id="lo">${T('btn_logout')}</button>
     <div class="badge">AppNest · v${APP_VERSION}</div>`;
   v.querySelector('#thBtn').onclick=()=>{ toggleTheme(); render(); };
   v.querySelector('#lgBtn').onclick=langMenu;
+  v.querySelector('#pinTgl').onchange=e=>{ if(e.target.checked) setPinFlow(); else removePinFlow(); };
   v.querySelector('#aboutBtn').onclick=aboutModal;
   v.querySelector('#shareBtn').onclick=shareApp;
+  const bb=v.querySelector('#binBtn'); if(bb) bb.onclick=binModal;
   const mb=v.querySelector('#mgrBtn'); if(mb) mb.onclick=managersModal;
   v.querySelector('#lo').onclick=logout;
 }
@@ -979,21 +1034,64 @@ function aboutModal(){
   m.querySelector('#ab_feedback').onclick=sendFeedback;
 }
 
+/* ================= PIN LOCK + RECYCLE BIN + START ================= */
+async function sha(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+function hasPin(){ return !!localStorage.getItem('cw_pin'); }
+async function checkPin(p){ return (await sha(p))===localStorage.getItem('cw_pin'); }
+function setPinFlow(){ const f=el(`<div><h3>${T('lock_on')}</h3><label class="field"><span>${T('lock_new')}</span><input id="np" type="password" inputmode="numeric"/></label><button class="btn gold big" id="sv">${T('btn_save')}</button></div>`);
+  const back=openModal(f); f.querySelector('#sv').onclick=async()=>{ const p=f.querySelector('#np').value.trim(); if(p.length<4){ toast(T('lock_new')); return; } localStorage.setItem('cw_pin',await sha(p)); back.remove(); toast(T('toast_lock_on')); render(); }; }
+function removePinFlow(){ const f=el(`<div><h3>${T('lock_on')}</h3><label class="field"><span>${T('lock_current')}</span><input id="cp" type="password" inputmode="numeric"/></label><button class="btn danger" id="rm">${T('toast_lock_off')}</button></div>`);
+  const back=openModal(f); f.querySelector('#rm').onclick=async()=>{ if(await checkPin(f.querySelector('#cp').value)){ localStorage.removeItem('cw_pin'); back.remove(); toast(T('toast_lock_off')); render(); } else toast(T('lock_wrong')); }; }
+
+async function binModal(){
+  const [{data:lots},{data:asgs}]=await Promise.all([
+    db.from('lots').select('*').not('deleted_at','is',null).order('deleted_at',{ascending:false}),
+    db.from('assignments').select('*, lots(name)').not('deleted_at','is',null).order('deleted_at',{ascending:false})]);
+  const empMap=await employeeMap();
+  const m=el(`<div><h3>${T('bin_title')}</h3><div id="binBody"></div><button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
+  const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
+  const body=m.querySelector('#binBody'); const nL=(lots||[]).length, nA=(asgs||[]).length;
+  if(!nL&&!nA){ body.innerHTML=`<div class="empty">${T('bin_empty')}</div>`; return; }
+  const mkRow=(label,restoreFn,purgeFn)=>{ const c=el(`<div class="card" style="margin:0 0 10px"><div style="margin-bottom:8px">${label}</div><div class="row" style="gap:8px"><button class="btn ghost" data-r="1">${T('restore')}</button><button class="btn danger" data-p="1">${T('delete_forever')}</button></div></div>`);
+    c.querySelector('[data-r]').onclick=async()=>{ await restoreFn(); toast(T('toast_restored')); back.remove(); binModal(); render(); };
+    c.querySelector('[data-p]').onclick=async()=>{ if(!confirm(T('delete_forever')+'?')) return; await purgeFn(); toast(T('toast_deleted')); back.remove(); binModal(); };
+    return c; };
+  if(nL){ body.appendChild(el(`<div style="margin:6px 2px 8px;font-weight:800;color:var(--gold)">${T('bin_lots')} (${nL})</div>`));
+    lots.forEach(l=>body.appendChild(mkRow(`📍 ${esc(l.name)} <span class="muted" style="font-size:12px">${esc(l.region||'')}</span>`,
+      ()=>db.from('lots').update({deleted_at:null}).eq('id',l.id), ()=>db.from('lots').delete().eq('id',l.id)))); }
+  if(nA){ body.appendChild(el(`<div style="margin:14px 2px 8px;font-weight:800;color:var(--muted)">${T('bin_asgs')} (${nA})</div>`));
+    asgs.forEach(a=>body.appendChild(mkRow(`🗓️ ${esc(a.lots?.name||'')} · ${fmtDate(a.work_date)} · ${esc(empMap[a.employee_id]||'')}`,
+      ()=>db.from('assignments').update({deleted_at:null}).eq('id',a.id), ()=>db.from('assignments').delete().eq('id',a.id)))); }
+}
+
+async function startApp(){
+  const {data:{session}}=await db.auth.getSession();
+  if(session){ await boot(); } else { showLogin(); }
+  if(!localStorage.getItem('cw_onboarded')) showGuide();
+}
+function gate(){
+  if(hasPin()){
+    document.getElementById('loginScreen').classList.add('hidden');
+    const ls=document.getElementById('lockScreen'); ls.classList.remove('hidden');
+    const inp=document.getElementById('pinInput'), btn=document.getElementById('pinBtn'), err=document.getElementById('pinErr');
+    const tryUnlock=async()=>{ err.textContent=''; if(await checkPin(inp.value)){ ls.classList.add('hidden'); startApp(); } else { err.textContent=T('lock_wrong'); inp.value=''; } };
+    btn.onclick=tryUnlock; inp.onkeydown=e=>{ if(e.key==='Enter') tryUnlock(); }; setTimeout(()=>inp.focus(),100);
+  } else startApp();
+}
+
 /* ================= START ================= */
 document.getElementById('loginBtn').addEventListener('click',doLogin);
 document.getElementById('loginPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 document.getElementById('lgLang').onclick=langMenu;
 document.getElementById('hLang').onclick=langMenu;
+document.getElementById('lgShare').onclick=shareApp;
+document.getElementById('hShare').onclick=shareApp;
 document.getElementById('lgTheme').onclick=()=>{ toggleTheme(); };
 document.getElementById('hTheme').onclick=()=>{ toggleTheme(); };
 applyLang(); applyTheme();
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 if(location.protocol==='file:'){ const e=document.getElementById('loginErr'); if(e) e.textContent='⚠ '+({he:'פתח דרך הקישור המאובטח (https), לא כקובץ מקומי',en:'Open via the secure https link, not as a local file'}[LANG]||'Open via the secure https link'); }
-if(!localStorage.getItem('cw_onboarded')){ showGuide(); }
-(async function init(){
-  const {data:{session}}=await db.auth.getSession();
-  if(session){ await boot(); } else { showLogin(); }
-})();
+gate();
 </script>
 </body>
 </html>
