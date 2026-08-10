@@ -176,7 +176,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='0.8';
+const APP_VERSION='0.9';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -380,7 +380,10 @@ const DICT={
  bin_asgs:{he:'שיבוצים שנמחקו',en:'Deleted assignments',ru:'Удалённые назначения',es:'Asignaciones eliminadas',ar:'تعيينات محذوفة'},
  restore:{he:'שחזר',en:'Restore',ru:'Восстановить',es:'Restaurar',ar:'استرجاع'},
  delete_forever:{he:'מחק לצמיתות',en:'Delete forever',ru:'Удалить навсегда',es:'Borrar definitivamente',ar:'حذف نهائي'},
- toast_restored:{he:'שוחזר',en:'Restored',ru:'Восстановлено',es:'Restaurado',ar:'تمت الاستعادة'}
+ toast_restored:{he:'שוחזר',en:'Restored',ru:'Восстановлено',es:'Restaurado',ar:'تمت الاستعادة'},
+ mgr_detail_title:{he:'פרטי מנהל',en:'Manager details',ru:'Данные менеджера',es:'Datos del gerente',ar:'بيانات المدير'},
+ clear_lock:{he:'בטל נעילת קוד מרחוק',en:'Clear PIN lock (remote)',ru:'Сбросить PIN (удалённо)',es:'Quitar PIN (remoto)',ar:'إلغاء قفل الرمز (عن بُعد)'},
+ toast_lock_cleared:{he:'הנעילה בוטלה',en:'Lock cleared',ru:'Блокировка снята',es:'Bloqueo quitado',ar:'تم إلغاء القفل'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 let LANG=localStorage.getItem('cw_lang')||'he';
@@ -550,17 +553,33 @@ async function doLogin(){
 }
 async function loadMe(){
   const {data:{user}}=await db.auth.getUser(); if(!user) return null;
-  const {data}=await db.from('profiles').select('id,full_name,role').eq('id',user.id).single();
-  return data||{id:user.id,full_name:user.email,role:'employee'};
+  const {data,error}=await db.from('profiles').select('id,full_name,role,lock_pin').eq('id',user.id).single();
+  if(!error&&data){ try{ localStorage.setItem('cw_me',JSON.stringify(data)); }catch(_){} return data; }
+  try{ const c=JSON.parse(localStorage.getItem('cw_me')||'null'); if(c&&c.id===user.id) return c; }catch(_){}
+  return {id:user.id,full_name:user.email,role:'employee'};
 }
 async function boot(){
   ME=await loadMe(); if(!ME){ showLogin(); return; }
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  buildNav(); CURRENT=isManager(ME.role)?'dash':'myday'; render(); flushQueue(true);
+  if(ME.lock_pin){ showLockThen(afterUnlock); } else afterUnlock();
 }
+function afterUnlock(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('lockScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  buildNav(); CURRENT=isManager(ME.role)?'dash':'myday'; render(); flushQueue(true); maybeOnboard();
+}
+function showLockThen(cb){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+  const ls=document.getElementById('lockScreen'); ls.classList.remove('hidden');
+  const inp=document.getElementById('pinInput'), btn=document.getElementById('pinBtn'), err=document.getElementById('pinErr');
+  inp.value='';
+  const go=async()=>{ err.textContent=''; if(await sha(inp.value)===ME.lock_pin){ ls.classList.add('hidden'); cb(); } else { err.textContent=T('lock_wrong'); inp.value=''; } };
+  btn.onclick=go; inp.onkeydown=e=>{ if(e.key==='Enter') go(); }; setTimeout(()=>inp.focus(),100);
+}
+function maybeOnboard(){ if(!localStorage.getItem('cw_onboarded')) showGuide(); }
 function showLogin(){ document.getElementById('app').classList.add('hidden'); document.getElementById('loginScreen').classList.remove('hidden'); }
-async function logout(){ await db.auth.signOut(); ME=null; location.reload(); }
+async function logout(){ await db.auth.signOut(); localStorage.removeItem('cw_me'); ME=null; location.reload(); }
 
 /* ================= NAV ================= */
 function buildNav(){
@@ -771,8 +790,10 @@ async function empDetail(id){
     <button class="btn gold big" id="d_save">${T('btn_save')}</button>
     <div class="card" style="margin:14px 0 0"><h3 style="margin:0 0 10px">${T('reset_pass')}</h3>
       <div class="row" style="gap:8px"><input id="d_pass" placeholder="${T('new_pass')}"/><button class="btn" style="width:auto" id="d_setpass">${T('btn_set_pass')}</button></div></div>
+    <button class="btn ghost" id="d_clearlock" style="margin-top:12px">🔓 ${T('clear_lock')}</button>
     </div>`);
   const back=openModal(m);
+  m.querySelector('#d_clearlock').onclick=async()=>{ if(await clearLockFor(id)) back.remove(); };
   m.querySelector('#d_save').onclick=async(ev)=>{ const b=ev.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
     const {error}=await db.from('profiles').update({full_name:m.querySelector('#d_name').value.trim(),language:m.querySelector('#d_lang').value,active:m.querySelector('#d_active').checked}).eq('id',id);
     if(error){ toast(T('err_generic')+error.message); b.disabled=false; b.textContent=T('btn_save'); return; }
@@ -809,13 +830,40 @@ function empForm(){
 }
 /* ---- Managers management (owner only) ---- */
 async function managersModal(){
-  const {data:mgrs}=await db.from('profiles').select('id,full_name,username,role').in('role',['owner','manager','accountant']).order('full_name');
+  let {data:mgrs}=await db.from('profiles').select('id,full_name,username,role').in('role',['owner','manager','accountant']).order('full_name');
+  mgrs=mgrs||[]; if(ME.role!=='owner') mgrs=mgrs.filter(x=>x.role!=='owner'); // managers never see the owner
   const m=el(`<div><div class="row between" style="margin-bottom:12px"><h3 style="margin:0">${T('manage_mgrs')}</h3></div>
     <button class="btn gold" id="addMgr" style="margin-bottom:12px">${T('add_mgr')}</button>
-    <div class="stack">${(mgrs||[]).map(x=>`<div class="card row between" style="margin:0"><span>${esc(x.full_name||'')} <span class="muted" style="font-size:12px">@${esc(x.username||'')}</span></span><span class="pill s-blue">${T('role_'+x.role)}</span></div>`).join('')}</div>
+    <div class="stack" id="mgrList"></div>
     <button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
   const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
   m.querySelector('#addMgr').onclick=()=>{ back.remove(); mgrForm(); };
+  const wrap=m.querySelector('#mgrList');
+  mgrs.forEach(x=>{ const c=el(`<div class="card row between" style="margin:0 0 10px;cursor:pointer"><span>${esc(x.full_name||'')} <span class="muted" style="font-size:12px">@${esc(x.username||'')}</span></span><span class="pill s-blue">${T('role_'+x.role)}</span></div>`);
+    if(!(x.role==='owner'&&ME.role!=='owner')) c.onclick=()=>{ back.remove(); mgrDetail(x.id); };
+    wrap.appendChild(c); });
+}
+async function mgrDetail(id){
+  const {data:e}=await db.from('profiles').select('id,full_name,username,role').eq('id',id).single(); if(!e) return;
+  const m=el(`<div><h3>${T('mgr_detail_title')}</h3>
+    <label class="field"><span>${T('f_fullname')}</span><input id="d_name" value="${esc(e.full_name||'')}"/></label>
+    <label class="field"><span>${T('lbl_username')}</span><input value="${esc(e.username||'')}" readonly style="opacity:.7"/></label>
+    <button class="btn gold big" id="d_save">${T('btn_save')}</button>
+    <div class="card" style="margin:14px 0 0"><h3 style="margin:0 0 10px">${T('reset_pass')}</h3>
+      <div class="row" style="gap:8px"><input id="d_pass" placeholder="${T('new_pass')}"/><button class="btn" style="width:auto" id="d_setpass">${T('btn_set_pass')}</button></div></div>
+    <button class="btn ghost" id="d_clearlock" style="margin-top:12px">🔓 ${T('clear_lock')}</button></div>`);
+  const back=openModal(m);
+  m.querySelector('#d_save').onclick=async(ev)=>{ const b=ev.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const {error}=await db.from('profiles').update({full_name:m.querySelector('#d_name').value.trim()}).eq('id',id);
+    if(error){ toast(T('err_generic')+error.message); b.disabled=false; b.textContent=T('btn_save'); return; }
+    back.remove(); toast(T('toast_saved')); };
+  m.querySelector('#d_setpass').onclick=async(ev)=>{ const pass=m.querySelector('#d_pass').value; if(!pass){ toast(T('new_pass')); return; }
+    const b=ev.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const {error}=await db.functions.invoke('create-employee',{body:{action:'reset_password',user_id:id,password:pass}});
+    b.disabled=false; b.textContent=T('btn_set_pass');
+    if(error){ let msg=error.message; try{ if(error.context){ const j=await error.context.json(); if(j&&j.error) msg=j.error; } }catch(_){} toast(T('err_generic')+msg); return; }
+    m.querySelector('#d_pass').value=''; toast(T('toast_pass_reset')); };
+  m.querySelector('#d_clearlock').onclick=async()=>{ if(await clearLockFor(id)) back.remove(); };
 }
 function mgrForm(){
   const f=el(`<div><h3>${T('mgr_form_title')}</h3>
@@ -997,7 +1045,7 @@ function renderSettings(v){
     <button class="btn ghost" id="aboutBtn" style="margin-bottom:12px">ℹ️ ${T('about_open')}</button>
     <button class="btn gold" id="shareBtn" style="margin-bottom:12px">📤 ${T('share_app')}</button>
     ${isManager(ME.role)?`<button class="btn ghost" id="binBtn" style="margin-bottom:12px">${T('bin_open')}</button>`:''}
-    ${ME.role==='owner'?`<button class="btn ghost" id="mgrBtn" style="margin-bottom:12px">${T('manage_mgrs')}</button>`:''}
+    ${isManager(ME.role)?`<button class="btn ghost" id="mgrBtn" style="margin-bottom:12px">${T('manage_mgrs')}</button>`:''}
     <button class="btn danger" id="lo">${T('btn_logout')}</button>
     <div class="badge">AppNest · v${APP_VERSION}</div>`;
   v.querySelector('#thBtn').onclick=()=>{ toggleTheme(); render(); };
@@ -1036,12 +1084,23 @@ function aboutModal(){
 
 /* ================= PIN LOCK + RECYCLE BIN + START ================= */
 async function sha(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
-function hasPin(){ return !!localStorage.getItem('cw_pin'); }
-async function checkPin(p){ return (await sha(p))===localStorage.getItem('cw_pin'); }
+function hasPin(){ return !!(ME&&ME.lock_pin); }
 function setPinFlow(){ const f=el(`<div><h3>${T('lock_on')}</h3><label class="field"><span>${T('lock_new')}</span><input id="np" type="password" inputmode="numeric"/></label><button class="btn gold big" id="sv">${T('btn_save')}</button></div>`);
-  const back=openModal(f); f.querySelector('#sv').onclick=async()=>{ const p=f.querySelector('#np').value.trim(); if(p.length<4){ toast(T('lock_new')); return; } localStorage.setItem('cw_pin',await sha(p)); back.remove(); toast(T('toast_lock_on')); render(); }; }
+  const back=openModal(f); f.querySelector('#sv').onclick=async(e)=>{ const p=f.querySelector('#np').value.trim(); if(p.length<4){ toast(T('lock_new')); return; }
+    const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>'; const h=await sha(p);
+    const {error}=await db.functions.invoke('create-employee',{body:{action:'set_lock',pin_hash:h}});
+    if(error){ toast(T('err_generic')+(error.message||'')); b.disabled=false; b.textContent=T('btn_save'); return; }
+    ME.lock_pin=h; try{ localStorage.setItem('cw_me',JSON.stringify(ME)); }catch(_){} back.remove(); toast(T('toast_lock_on')); render(); }; }
 function removePinFlow(){ const f=el(`<div><h3>${T('lock_on')}</h3><label class="field"><span>${T('lock_current')}</span><input id="cp" type="password" inputmode="numeric"/></label><button class="btn danger" id="rm">${T('toast_lock_off')}</button></div>`);
-  const back=openModal(f); f.querySelector('#rm').onclick=async()=>{ if(await checkPin(f.querySelector('#cp').value)){ localStorage.removeItem('cw_pin'); back.remove(); toast(T('toast_lock_off')); render(); } else toast(T('lock_wrong')); }; }
+  const back=openModal(f); f.querySelector('#rm').onclick=async(e)=>{ if(await sha(f.querySelector('#cp').value)!==ME.lock_pin){ toast(T('lock_wrong')); return; }
+    const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const {error}=await db.functions.invoke('create-employee',{body:{action:'clear_lock'}});
+    if(error){ toast(T('err_generic')+(error.message||'')); b.disabled=false; b.textContent=T('toast_lock_off'); return; }
+    ME.lock_pin=null; try{ localStorage.setItem('cw_me',JSON.stringify(ME)); }catch(_){} back.remove(); toast(T('toast_lock_off')); render(); }; }
+/* clear someone else's app lock remotely (owner/manager) */
+async function clearLockFor(userId){ const {error}=await db.functions.invoke('create-employee',{body:{action:'clear_lock',user_id:userId}});
+  if(error){ let m=error.message; try{ if(error.context){ const j=await error.context.json(); if(j&&j.error) m=j.error; } }catch(_){}
+    toast(T('err_generic')+m); return false; } toast(T('toast_lock_cleared')); return true; }
 
 async function binModal(){
   const [{data:lots},{data:asgs}]=await Promise.all([
@@ -1066,17 +1125,7 @@ async function binModal(){
 
 async function startApp(){
   const {data:{session}}=await db.auth.getSession();
-  if(session){ await boot(); } else { showLogin(); }
-  if(!localStorage.getItem('cw_onboarded')) showGuide();
-}
-function gate(){
-  if(hasPin()){
-    document.getElementById('loginScreen').classList.add('hidden');
-    const ls=document.getElementById('lockScreen'); ls.classList.remove('hidden');
-    const inp=document.getElementById('pinInput'), btn=document.getElementById('pinBtn'), err=document.getElementById('pinErr');
-    const tryUnlock=async()=>{ err.textContent=''; if(await checkPin(inp.value)){ ls.classList.add('hidden'); startApp(); } else { err.textContent=T('lock_wrong'); inp.value=''; } };
-    btn.onclick=tryUnlock; inp.onkeydown=e=>{ if(e.key==='Enter') tryUnlock(); }; setTimeout(()=>inp.focus(),100);
-  } else startApp();
+  if(session){ await boot(); } else { showLogin(); maybeOnboard(); }
 }
 
 /* ================= START ================= */
@@ -1091,7 +1140,7 @@ document.getElementById('hTheme').onclick=()=>{ toggleTheme(); };
 applyLang(); applyTheme();
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 if(location.protocol==='file:'){ const e=document.getElementById('loginErr'); if(e) e.textContent='⚠ '+({he:'פתח דרך הקישור המאובטח (https), לא כקובץ מקומי',en:'Open via the secure https link, not as a local file'}[LANG]||'Open via the secure https link'); }
-gate();
+startApp();
 </script>
 </body>
 </html>
