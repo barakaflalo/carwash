@@ -98,9 +98,11 @@
 
   .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:40}
   .modal{background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;width:100%;max-width:760px;
-    padding:20px;max-height:92dvh;overflow:auto;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+    padding:20px;max-height:92dvh;overflow:auto;padding-bottom:calc(20px + env(safe-area-inset-bottom));position:relative}
   .modal h3{margin:0 0 14px;font-size:18px}
   .modal .grab{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 14px}
+  .modal-x{position:absolute;top:12px;inset-inline-end:12px;width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--line);background:var(--surface2);color:var(--text);font-size:15px;line-height:1;z-index:2}
 
   .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .stepper button{width:56px;height:52px;background:var(--surface2);border:none;color:var(--gold);font-size:24px}
@@ -176,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='0.9';
+const APP_VERSION='1.0';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -383,7 +385,23 @@ const DICT={
  toast_restored:{he:'שוחזר',en:'Restored',ru:'Восстановлено',es:'Restaurado',ar:'تمت الاستعادة'},
  mgr_detail_title:{he:'פרטי מנהל',en:'Manager details',ru:'Данные менеджера',es:'Datos del gerente',ar:'بيانات المدير'},
  clear_lock:{he:'בטל נעילת קוד מרחוק',en:'Clear PIN lock (remote)',ru:'Сбросить PIN (удалённо)',es:'Quitar PIN (remoto)',ar:'إلغاء قفل الرمز (عن بُعد)'},
- toast_lock_cleared:{he:'הנעילה בוטלה',en:'Lock cleared',ru:'Блокировка снята',es:'Bloqueo quitado',ar:'تم إلغاء القفل'}
+ toast_lock_cleared:{he:'הנעילה בוטלה',en:'Lock cleared',ru:'Блокировка снята',es:'Bloqueo quitado',ar:'تم إلغاء القفل'},
+ tomorrow:{he:'מחר',en:'Tomorrow',ru:'Завтра',es:'Mañana',ar:'غدًا'},
+ team_lead:{he:'ראש צוות',en:'Team lead',ru:'Бригадир',es:'Jefe de equipo',ar:'رئيس الفريق'},
+ set_lead:{he:'קבע ראש צוות',en:'Set team lead',ru:'Назначить бригадира',es:'Definir jefe',ar:'تعيين رئيس الفريق'},
+ end_shift:{he:'סיום משמרת',en:'End shift',ru:'Конец смены',es:'Fin de turno',ar:'إنهاء الوردية'},
+ report_now:{he:'אני מדווח היום',en:"I'll report today",ru:'Я отчитаюсь сегодня',es:'Yo reporto hoy',ar:'سأبلّغ اليوم'},
+ photo_report:{he:'צילום ודיווח',en:'Photo & report',ru:'Фото и отчёт',es:'Foto e informe',ar:'صورة وتقرير'},
+ st_present:{he:'הגעת',en:'Arrived',ru:'На месте',es:'Presente',ar:'حاضر'},
+ st_absent:{he:'לא הגיע',en:'No-show',ru:'Не пришёл',es:'Ausente',ar:'لم يحضر'},
+ photographer:{he:'צילם',en:'By',ru:'Снял',es:'Por',ar:'صوّر'},
+ docs_count:{he:'מסמכים',en:'documents',ru:'документов',es:'documentos',ar:'مستندات'},
+ close:{he:'סגור',en:'Close',ru:'Закрыть',es:'Cerrar',ar:'إغلاق'},
+ monthly_report:{he:'📅 דוח חודשי',en:'📅 Monthly report',ru:'📅 Месячный отчёт',es:'📅 Informe mensual',ar:'📅 تقرير شهري'},
+ pick_month:{he:'בחר חודש',en:'Pick a month',ru:'Выберите месяц',es:'Elige un mes',ar:'اختر الشهر'},
+ share_report:{he:'📤 שתף דוח',en:'📤 Share report',ru:'📤 Поделиться',es:'📤 Compartir',ar:'📤 مشاركة التقرير'},
+ month_empty:{he:'לא נמצאו ימי עבודה בחודש זה.',en:'No work days found this month.',ru:'Нет рабочих дней в этом месяце.',es:'Sin días de trabajo este mes.',ar:'لا أيام عمل هذا الشهر.'},
+ my_month_title:{he:'הדוח החודשי שלי',en:'My monthly report',ru:'Мой месячный отчёт',es:'Mi informe mensual',ar:'تقريري الشهري'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 let LANG=localStorage.getItem('cw_lang')||'he';
@@ -482,10 +500,15 @@ function compressImage(file,maxDim=1600,q=0.7){ return new Promise((resolve,reje
   img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('img'));}; img.src=url;
 });}
 
-function statusOf(a,hasReport){
-  if(a.finished_at) return hasReport?['s-green',T('st_done')]:['s-amber',T('st_missing')];
+function statusOf(a){ // an employee's PERSONAL attendance status
+  if(a.finished_at) return ['s-green',T('st_done')];
   if(a.arrived_at) return ['s-blue',T('st_working')];
-  if(a.work_date<todayStr()) return ['s-red',T('st_notdone')];
+  if(a.work_date<todayStr()) return ['s-red',T('st_absent')];
+  return ['s-grey',T('st_scheduled')];
+}
+function lotStatus(hasReport,past){ // a LOT's done/not-done for the day (by report)
+  if(hasReport) return ['s-green',T('st_done')];
+  if(past) return ['s-red',T('st_notdone')];
   return ['s-grey',T('st_scheduled')];
 }
 function roleLabel(r){ return T('role_'+r); }
@@ -504,8 +527,12 @@ async function processRecord(r){
   if(r.type==='arrive'){
     const {error}=await db.from('assignments').update({arrived_at:r.arrived_at,arrived_lat:r.lat,arrived_lng:r.lng}).eq('id',r.assignment_id);
     if(error) throw error;
+  } else if(r.type==='endshift'){
+    const {error}=await db.from('assignments').update({finished_at:r.finished_at,finished_lat:r.lat,finished_lng:r.lng}).eq('id',r.assignment_id);
+    if(error) throw error;
   } else if(r.type==='finish'){
-    if(r.photoBlob){ const up=await db.storage.from('documents').upload(r.path,r.photoBlob,{contentType:'image/jpeg',upsert:true}); if(up.error) throw up.error; }
+    if(r.photoBlob){ const up=await db.storage.from('documents').upload(r.path,r.photoBlob,{contentType:'image/jpeg',upsert:true}); if(up.error) throw up.error;
+      const doc=await db.from('lot_documents').insert({lot_id:r.lot_id,work_date:r.work_date,photo_path:r.path,submitted_by:r.submitted_by}); if(doc.error) throw doc.error; }
     const rep=await db.from('lot_reports').upsert({lot_id:r.lot_id,work_date:r.work_date,cars_washed:r.cars,preps:r.preps,photo_path:r.path,note:r.note,submitted_by:r.submitted_by,submitted_at:r.submitted_at},{onConflict:'lot_id,work_date'}); if(rep.error) throw rep.error;
     const fin=await db.from('assignments').update({finished_at:r.finished_at,finished_lat:r.lat,finished_lng:r.lng}).eq('id',r.assignment_id); if(fin.error) throw fin.error;
   }
@@ -531,8 +558,9 @@ window.addEventListener('online',()=>flushQueue(false));
 
 /* ================= MODAL ================= */
 function openModal(inner){
-  const back=el(`<div class="modal-back"><div class="modal"><div class="grab"></div></div></div>`);
+  const back=el(`<div class="modal-back"><div class="modal"><button class="modal-x" aria-label="close">✕</button><div class="grab"></div></div></div>`);
   back.querySelector('.modal').appendChild(inner);
+  back.querySelector('.modal-x').addEventListener('click',()=>back.remove());
   back.addEventListener('click',e=>{ if(e.target===back) back.remove(); });
   document.getElementById('modalRoot').appendChild(back); return back;
 }
@@ -611,14 +639,16 @@ async function render(){
 /* ================= MANAGER · DASHBOARD ================= */
 let DASH_FROM=todayStr(), DASH_TO=todayStr(), DASH_REGION='';
 async function renderDash(v){
-  const [{data:asgs},{data:reports}]=await Promise.all([
+  const [{data:asgs},{data:reports},{data:docs}]=await Promise.all([
     db.from('assignments').select('*, lots(name,address,region,lat,lng)').is('deleted_at',null).gte('work_date',DASH_FROM).lte('work_date',DASH_TO).order('work_date').order('created_at'),
-    db.from('lot_reports').select('*').gte('work_date',DASH_FROM).lte('work_date',DASH_TO)]);
+    db.from('lot_reports').select('*').gte('work_date',DASH_FROM).lte('work_date',DASH_TO),
+    db.from('lot_documents').select('*').gte('work_date',DASH_FROM).lte('work_date',DASH_TO)]);
   const empMap=await employeeMap();
   let rows=(asgs||[]); if(DASH_REGION) rows=rows.filter(a=>(a.lots?.region||'')===DASH_REGION);
   const repBy={}; (reports||[]).forEach(r=>repBy[r.lot_id+'|'+r.work_date]=r);
+  const docsBy={}; (docs||[]).forEach(d=>{ (docsBy[d.lot_id+'|'+d.work_date]=docsBy[d.lot_id+'|'+d.work_date]||[]).push(d); });
   const byDate={}; rows.forEach(a=>{ (byDate[a.work_date]=byDate[a.work_date]||{}); (byDate[a.work_date][a.lot_id]=byDate[a.work_date][a.lot_id]||{lot:a.lots,rows:[]}).rows.push(a); });
-  const redCount=rows.filter(a=>!a.finished_at&&a.work_date<todayStr()).length;
+  let redCount=0; for(const dt in byDate) for(const lid in byDate[dt]){ if(dt<todayStr() && !repBy[lid+'|'+dt]) redCount++; }
   const REG=[['',T('all_regions')],['north',T('r_north')],['haifa',T('r_haifa')],['sharon',T('r_sharon')],['center',T('r_center')],['jlm',T('r_jlm')],['south',T('r_south')]];
   v.innerHTML=`<h2 class="screen-title">${T('dash_title')}</h2>
    <div class="card">
@@ -641,23 +671,27 @@ async function renderDash(v){
     list.appendChild(el(`<div style="margin:16px 2px 8px;font-weight:800;color:var(--gold)">${dt===todayStr()?T('today')+' · ':''}${dt}</div>`));
     const lots=byDate[dt];
     for(const lotId in lots){ const {lot,rows:lrows}=lots[lotId], rep=repBy[lotId+'|'+dt];
+      const dayDocs=docsBy[lotId+'|'+dt]||[]; const [lcls,ltxt]=lotStatus(!!rep, dt<todayStr());
+      const leadId=(lrows.find(a=>a.is_lead)||{}).employee_id;
       const c=el('<div class="card"></div>');
-      c.innerHTML=`<div class="row between"><h3 style="margin:0">${esc(lot?.name||'')}</h3><span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span></div>
+      c.innerHTML=`<div class="row between"><h3 style="margin:0">${esc(lot?.name||'')}</h3><span class="row" style="gap:8px"><span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span><span class="pill ${lcls}">${ltxt}</span></span></div>
+        <div class="row between" style="margin-top:6px"><span class="muted" style="font-size:12px">👑 ${T('team_lead')}: ${esc(empMap[leadId]||'—')}</span><button class="btn ghost" style="width:auto;padding:4px 10px" data-setlead="1">✎</button></div>
         <div class="stack" style="margin-top:8px">
-          ${lrows.map(a=>{ const[cls,txt]=statusOf(a,!!rep);
+          ${lrows.map(a=>{ const[cls,txt]=statusOf(a);
             const d=a.arrived_at?distM(a.arrived_lat,a.arrived_lng,lot?.lat,lot?.lng):null; const far=(d!=null&&d>GEOFENCE_M);
             return `<div class="row between">
-              <span class="row" style="gap:6px">${esc(empMap[a.employee_id]||T('role_employee'))}${far?`<span class="pill s-amber">⚠︎ ${T('far_flag')} ${d}m</span>`:''}</span>
+              <span class="row" style="gap:6px">${a.is_lead?'👑 ':''}${esc(empMap[a.employee_id]||T('role_employee'))}${far?`<span class="pill s-amber">⚠︎ ${T('far_flag')} ${d}m</span>`:''}</span>
               <span class="row" style="gap:8px">${a.arrived_at?`<span class="muted" style="font-size:11px">${fmtTime(a.arrived_at)}${a.finished_at?'–'+fmtTime(a.finished_at):''}</span>`:''}
               <span class="pill ${cls}">${txt}</span>
               <button class="btn ghost" style="width:auto;padding:4px 9px" data-del="${a.id}">🗑️</button></span></div>`; }).join('')}
         </div>
-        ${rep?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-          <div class="row between"><span>🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}</span>
-          <span class="row" style="gap:6px">${rep.photo_path?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-photo="${esc(rep.photo_path)}">📄</button>`:''}<button class="btn ghost" style="width:auto;padding:6px 10px" data-editrep="1">✏️</button></span></div>
-          ${rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`:''}`;
-      const pb=c.querySelector('[data-photo]'); if(pb) pb.onclick=()=>viewPhoto(pb.dataset.photo,rep.note);
+        ${(rep||dayDocs.length)?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <div class="row between"><span>${rep?`🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}`:''}</span>
+          <span class="row" style="gap:6px">${dayDocs.length?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-docs="1">📄 ${dayDocs.length}</button>`:''}${rep?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-editrep="1">✏️</button>`:''}</span></div>
+          ${rep&&rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`:''}`;
+      const gb=c.querySelector('[data-docs]'); if(gb) gb.onclick=()=>docsGallery(lot?.name,dt,dayDocs,empMap);
       const eb=c.querySelector('[data-editrep]'); if(eb) eb.onclick=()=>editReportForm(rep);
+      const sl=c.querySelector('[data-setlead]'); if(sl) sl.onclick=()=>setLeadFlow(lotId,dt,lrows,empMap);
       c.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm(T('del_confirm'))) return;
         const {error}=await db.from('assignments').update({deleted_at:new Date().toISOString()}).eq('id',b.dataset.del);
         if(error){ toast(T('err_generic')+error.message); return; } toast(T('toast_deleted')); render(); });
@@ -683,6 +717,28 @@ function editReportForm(rep){
     const {error}=await db.from('lot_reports').update({cars_washed:+f.querySelector('#er_cars').value||0,preps:+f.querySelector('#er_preps').value||0,note:f.querySelector('#er_note').value.trim()}).eq('id',rep.id);
     if(error){ toast(T('err_generic')+error.message); b.disabled=false; b.textContent=T('btn_save'); return; }
     back.remove(); toast(T('toast_saved')); render(); };
+}
+async function docsGallery(lotName,date,docs,empMap){
+  const {data:signed}=await db.storage.from('documents').createSignedUrls(docs.map(d=>d.photo_path),3600);
+  const urlByPath={}; (signed||[]).forEach(s=>{ if(s.signedUrl) urlByPath[s.path]=s.signedUrl; });
+  const m=el(`<div><h3>${T('btn_doc')} · ${esc(lotName||'')} · ${fmtDate(date)}</h3><div id="dg" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div></div>`);
+  openModal(m); const grid=m.querySelector('#dg');
+  docs.forEach(d=>{ const url=urlByPath[d.photo_path]; if(!url) return; const who=empMap[d.submitted_by]||''; const fn=docName(lotName,date,who);
+    const cell=el(`<div><img class="thumb" style="margin:0;height:130px;object-fit:cover;cursor:pointer" src="${url}"/>
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:4px">${T('photographer')}: ${esc(who||'—')}</div>
+      <button class="btn ghost" style="margin-top:6px;padding:8px" data-dl="1">${T('btn_download')}</button></div>`);
+    cell.querySelector('img').onclick=()=>{ const mm=el(`<div><img class="thumb" src="${url}"/><div class="muted" style="margin-top:8px">${T('photographer')}: ${esc(who||'—')}</div></div>`); openModal(mm); };
+    cell.querySelector('[data-dl]').onclick=()=>fetchDownload(url,fn);
+    grid.appendChild(cell); });
+}
+function setLeadFlow(lotId,date,lrows,empMap){
+  const m=el(`<div><h3>${T('set_lead')}</h3><div class="stack" id="ldlist"></div></div>`);
+  const back=openModal(m); const list=m.querySelector('#ldlist');
+  lrows.forEach(a=>{ const r=el(`<div class="card row between" style="margin:0;cursor:pointer"><span>${a.is_lead?'👑 ':''}${esc(empMap[a.employee_id]||T('role_employee'))}</span>${a.is_lead?`<span class="pill s-blue">${T('team_lead')}</span>`:''}</div>`);
+    r.onclick=async()=>{ await db.from('assignments').update({is_lead:false}).eq('lot_id',lotId).eq('work_date',date).is('deleted_at',null);
+      await db.from('assignments').update({is_lead:true}).eq('lot_id',lotId).eq('work_date',date).eq('employee_id',a.employee_id).is('deleted_at',null);
+      back.remove(); toast(T('toast_saved')); render(); };
+    list.appendChild(r); });
 }
 
 /* ================= MANAGER · LOTS ================= */
@@ -742,20 +798,24 @@ async function renderAssign(v){
     <label class="field"><span>${T('f_date')}</span><input type="date" id="a_date" value="${SEL_DATE}"/></label>
     <label class="field"><span>${T('nav_lots')}</span><select id="a_lot"><option value="">${T('choose_lot')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></label>
     <span class="muted" style="font-size:13px">${T('choose_team')}</span>
-    <div id="a_emps" class="stack" style="margin-top:10px">${(emps||[]).map(e=>`<label class="row" style="gap:10px;background:var(--surface2);padding:12px;border-radius:12px;border:1px solid var(--line)"><input type="checkbox" style="width:20px;height:20px" value="${e.id}"/> <span>${esc(e.full_name||T('role_employee'))}</span></label>`).join('')||`<div class="muted">${T('no_emps_add')}</div>`}</div>
+    <div id="a_emps" class="stack" style="margin-top:10px">${(emps||[]).map(e=>`<label class="row between" style="gap:10px;background:var(--surface2);padding:12px;border-radius:12px;border:1px solid var(--line)"><span class="row" style="gap:10px"><input type="checkbox" class="a_ck" style="width:20px;height:20px" value="${e.id}"/> <span>${esc(e.full_name||T('role_employee'))}</span></span><button type="button" class="btn ghost a_lead" data-e="${e.id}" style="width:auto;padding:6px 10px;font-size:12px">👑 ${T('team_lead')}</button></label>`).join('')||`<div class="muted">${T('no_emps_add')}</div>`}</div>
     <div class="muted" style="font-size:13px;margin-top:14px">${T('assign_repeat')}</div>
     <div class="row" style="gap:6px;margin-top:8px" id="a_dows">${(DOW[LANG]||DOW.en).map((d,i)=>`<button type="button" class="btn ghost dow" data-d="${i}" style="padding:10px 0">${d}</button>`).join('')}</div>
     <label class="field" style="margin-top:10px"><span>${T('weeks_ahead')}</span><input type="number" id="a_weeks" value="4" min="1" max="12"/></label>
     <button class="btn gold big" id="a_save" style="margin-top:6px">${T('btn_assign')}</button></div>`;
   v.querySelectorAll('.dow').forEach(b=>b.onclick=()=>b.classList.toggle('gold'));
+  let leadId=null;
+  v.querySelectorAll('.a_lead').forEach(b=>b.onclick=()=>{ leadId=(leadId===b.dataset.e)?null:b.dataset.e;
+    v.querySelectorAll('.a_lead').forEach(x=>x.classList.toggle('gold',x.dataset.e===leadId)); });
   v.querySelector('#a_save').onclick=async()=>{
     const date=v.querySelector('#a_date').value,lot=v.querySelector('#a_lot').value;
-    const chosen=[...v.querySelectorAll('#a_emps input:checked')].map(i=>i.value);
+    const chosen=[...v.querySelectorAll('#a_emps .a_ck:checked')].map(i=>i.value);
     if(!date||!lot||!chosen.length){ toast(T('err_assign')); return; }
+    const lead=(leadId&&chosen.includes(leadId))?leadId:chosen[0]; // default: first picked
     const dows=[...v.querySelectorAll('.dow.gold')].map(b=>+b.dataset.d);
     const weeks=Math.min(12,Math.max(1,+v.querySelector('#a_weeks').value||1));
     const dates=dows.length?genDates(date,dows,weeks):[date];
-    const rows=[]; chosen.forEach(eid=>dates.forEach(dt=>rows.push({lot_id:lot,employee_id:eid,work_date:dt,created_by:ME.id})));
+    const rows=[]; chosen.forEach(eid=>dates.forEach(dt=>rows.push({lot_id:lot,employee_id:eid,work_date:dt,created_by:ME.id,is_lead:eid===lead})));
     const {error}=await db.from('assignments').insert(rows);
     if(error){ toast(T('err_generic')+error.message); return; }
     toast(`${rows.length} ${T('toast_assigned')}`); SEL_DATE=date; DASH_FROM=DASH_TO=date; DASH_REGION=''; CURRENT='dash'; render();
@@ -887,9 +947,10 @@ function mgrForm(){
 /* ================= MANAGER · REPORTS ================= */
 let REP_FROM=todayStr(), REP_TO=todayStr();
 async function renderReports(v){
-  const [{data:reports},{data:asgs},empMap]=await Promise.all([
+  const [{data:reports},{data:asgs},{data:docs},empMap]=await Promise.all([
     db.from('lot_reports').select('*, lots(name,client_name)').gte('work_date',REP_FROM).lte('work_date',REP_TO),
     db.from('assignments').select('employee_id,lot_id,work_date,arrived_at,finished_at').is('deleted_at',null).gte('work_date',REP_FROM).lte('work_date',REP_TO),
+    db.from('lot_documents').select('*, lots(name)').gte('work_date',REP_FROM).lte('work_date',REP_TO),
     employeeMap()]);
   const byLot={},byEmp={}; let totCars=0,totPreps=0;
   (reports||[]).forEach(r=>{ const k=r.lot_id; (byLot[k]=byLot[k]||{name:r.lots?.name||'',cars:0,preps:0,days:new Set()});
@@ -915,23 +976,23 @@ async function renderReports(v){
   v.querySelector('#q_week').onclick=()=>{ REP_TO=todayStr(); REP_FROM=shiftDate(todayStr(),-6); render(); };
   v.querySelector('#q_month').onclick=()=>{ REP_TO=todayStr(); REP_FROM=shiftDate(todayStr(),-29); render(); };
   v.querySelector('#r_csv').onclick=()=>exportCSV(reports||[],empMap);
-  docsSection(reports||[],v);
+  docsSection(docs||[],empMap,v);
 }
 function sanitize(s){ return (s||'lot').replace(/[\\/:*?"<>|]+/g,'_').replace(/\s+/g,'_'); }
-function docName(lotName,date){ return `${sanitize(lotName)}_${date}.jpg`; }
+function docName(lotName,date,who){ return `${sanitize(lotName)}_${date}${who?'_'+sanitize(who):''}.jpg`; }
 async function fetchDownload(url,filename){ try{ const b=await (await fetch(url)).blob(); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=filename; a.click(); URL.revokeObjectURL(u);}catch(e){ toast(T('err_generic')+(e.message||'')); } }
-async function docsSection(reports,v){
+async function docsSection(docs,empMap,v){
   const grid=v.querySelector('#docGrid'), zipBtn=v.querySelector('#r_zip');
-  const withPhoto=reports.filter(r=>r.photo_path);
-  if(!withPhoto.length){ grid.innerHTML=`<div class="muted" style="grid-column:1/-1">${T('docs_empty')}</div>`; zipBtn.style.display='none'; return; }
-  const {data:signed}=await db.storage.from('documents').createSignedUrls(withPhoto.map(r=>r.photo_path),3600);
+  if(!docs.length){ grid.innerHTML=`<div class="muted" style="grid-column:1/-1">${T('docs_empty')}</div>`; zipBtn.style.display='none'; return; }
+  const {data:signed}=await db.storage.from('documents').createSignedUrls(docs.map(d=>d.photo_path),3600);
   const urlByPath={}; (signed||[]).forEach(s=>{ if(s.signedUrl) urlByPath[s.path]=s.signedUrl; });
+  const nameFor=d=>docName(d.lots?.name,d.work_date,empMap[d.submitted_by]||'');
   grid.innerHTML='';
-  withPhoto.forEach(r=>{ const url=urlByPath[r.photo_path]; if(!url) return; const fn=docName(r.lots?.name,r.work_date);
+  docs.forEach(d=>{ const url=urlByPath[d.photo_path]; if(!url) return; const who=empMap[d.submitted_by]||''; const fn=nameFor(d);
     const cell=el(`<div><img class="thumb" style="margin:0;height:120px;object-fit:cover;cursor:pointer" src="${url}"/>
       <button class="btn ghost" style="margin-top:6px;padding:8px" data-dl="1">${T('btn_download')}</button>
-      <div class="muted" style="font-size:11px;text-align:center;margin-top:3px">${esc(r.lots?.name||'')} · ${fmtDate(r.work_date)}</div></div>`);
-    cell.querySelector('img').onclick=()=>{ const mm=el(`<div><img class="thumb" src="${url}"/><button class="btn gold" style="margin-top:10px" data-dl2="1">${T('btn_download')}</button></div>`);
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:3px">${esc(d.lots?.name||'')} · ${fmtDate(d.work_date)}${who?' · '+esc(who):''}</div></div>`);
+    cell.querySelector('img').onclick=()=>{ const mm=el(`<div><img class="thumb" src="${url}"/><div class="muted" style="margin:8px 0">${T('photographer')}: ${esc(who||'—')}</div><button class="btn gold" data-dl2="1">${T('btn_download')}</button></div>`);
       openModal(mm); mm.querySelector('[data-dl2]').onclick=()=>fetchDownload(url,fn); };
     cell.querySelector('[data-dl]').onclick=()=>fetchDownload(url,fn);
     grid.appendChild(cell); });
@@ -939,7 +1000,7 @@ async function docsSection(reports,v){
   zipBtn.onclick=async()=>{ if(typeof JSZip==='undefined'){ toast('ZIP ✕'); return; }
     zipBtn.disabled=true; const orig=zipBtn.textContent; zipBtn.textContent=T('zipping');
     const zip=new JSZip(), used={};
-    for(const r of withPhoto){ const url=urlByPath[r.photo_path]; if(!url) continue; let fn=docName(r.lots?.name,r.work_date);
+    for(const d of docs){ const url=urlByPath[d.photo_path]; if(!url) continue; let fn=nameFor(d);
       if(used[fn]){ used[fn]++; fn=fn.replace(/\.jpg$/,'_'+used[fn]+'.jpg'); } else used[fn]=1;
       try{ zip.file(fn,await (await fetch(url)).blob()); }catch(_){} }
     const blob=await zip.generateAsync({type:'blob'}); const u=URL.createObjectURL(blob);
@@ -956,44 +1017,48 @@ function exportCSV(reports,empMap){
 
 /* ================= EMPLOYEE · MY DAY ================= */
 async function renderMyDay(v){
-  let asgs=[], reports=[], offline=false;
+  let asgs=[], offline=false;
   try{
     const r1=await db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('employee_id',ME.id).is('deleted_at',null).gte('work_date',todayStr()).order('work_date').order('created_at');
     if(r1.error) throw r1.error; asgs=r1.data||[];
-    const dates=[...new Set(asgs.map(a=>a.work_date))];
-    if(dates.length){ const r2=await db.from('lot_reports').select('lot_id,work_date').in('work_date',dates); reports=r2.data||[]; }
-    try{ localStorage.setItem('cw_myday_'+ME.id, JSON.stringify({asgs,reports})); }catch(_){}
-  }catch(e){
-    offline=true; try{ const c=JSON.parse(localStorage.getItem('cw_myday_'+ME.id)||'null'); if(c){ asgs=c.asgs||[]; reports=c.reports||[]; } }catch(_){}
-  }
-  const hasRep=a=>reports.some(r=>r.lot_id===a.lot_id&&r.work_date===a.work_date);
+    try{ localStorage.setItem('cw_myday_'+ME.id, JSON.stringify({asgs})); }catch(_){}
+  }catch(e){ offline=true; try{ const c=JSON.parse(localStorage.getItem('cw_myday_'+ME.id)||'null'); if(c){ asgs=c.asgs||[]; } }catch(_){} }
   const pend=await pendingSet(); const pc=pend.size;
   v.innerHTML=`<h2 class="screen-title">${T('myday_title')}</h2>
     ${offline?`<div class="card" style="border-color:rgba(245,158,11,.4)"><span class="muted">${T('offline_cache')}</span></div>`:''}
     ${pc?`<div class="card row between" style="border-color:rgba(245,158,11,.4)"><span class="pill s-amber">${pc} ${T('pending_banner')}</span><button class="btn ghost" style="width:auto" id="retry">${T('btn_retry')}</button></div>`:''}
-    <div id="jobs" class="stack"></div>`;
+    <div id="jobs"></div>`;
   const rb=v.querySelector('#retry'); if(rb) rb.onclick=async()=>{ await flushQueue(false); };
   const wrap=v.querySelector('#jobs');
   if(!asgs.length){ wrap.innerHTML=`<div class="empty">${T('myday_empty')}</div>`; return; }
-  asgs.forEach(a=>{ const isToday=a.work_date===todayStr(); const pending=pend.has(a.id);
-    let cls,txt; if(pending){ cls='s-amber'; txt=T('pending_send'); } else { const s=statusOf(a,hasRep(a)); cls=s[0]; txt=s[1]; }
-    const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(a.lots?.name||'')}</h3><span class="pill ${cls}">${txt}</span></div>
-      <div class="muted" style="font-size:13px;margin-top:4px">${isToday?T('today'):T('scheduled_for')+fmtDate(a.work_date)} · ${esc(a.lots?.address||a.lots?.region||'')}</div>
-      ${!isToday&&!pending?`<div class="muted" style="font-size:12px;margin-top:6px">🔒 ${T('only_today')}</div>`:''}</div>`);
-    if(!pending){ c.style.cursor='pointer'; c.onclick=()=>jobModal(a,isToday); }
-    wrap.appendChild(c);
+  const tmr=shiftDate(todayStr(),1);
+  const byDate={}; asgs.forEach(a=>{ (byDate[a.work_date]=byDate[a.work_date]||[]).push(a); });
+  Object.keys(byDate).sort().forEach(dt=>{
+    const label=dt===todayStr()?T('today'):(dt===tmr?T('tomorrow'):fmtDate(dt));
+    wrap.appendChild(el(`<div style="margin:16px 2px 8px;font-weight:800;color:${dt===todayStr()?'var(--gold)':'var(--muted)'}">${label}</div>`));
+    byDate[dt].forEach(a=>{ const isToday=dt===todayStr(); const pending=pend.has(a.id);
+      let cls,txt; if(pending){ cls='s-amber'; txt=T('pending_send'); } else { const s=statusOf(a); cls=s[0]; txt=s[1]; }
+      const c=el(`<div class="card" style="margin:0 0 10px"><div class="row between"><h3 style="margin:0">${esc(a.lots?.name||'')} ${a.is_lead?'👑':''}</h3><span class="pill ${cls}">${txt}</span></div>
+        <div class="muted" style="font-size:13px;margin-top:4px">${esc(a.lots?.address||a.lots?.region||'')}</div>
+        ${!isToday&&!pending?`<div class="muted" style="font-size:12px;margin-top:6px">🔒 ${T('only_today')}</div>`:''}</div>`);
+      if(!pending){ c.style.cursor='pointer'; c.onclick=()=>jobModal(a,isToday); }
+      wrap.appendChild(c);
+    });
   });
 }
 function jobModal(a,isToday){
-  const lot=a.lots||{}, arrived=!!a.arrived_at, finished=!!a.finished_at;
-  const canArrive=isToday&&!arrived, canFinish=isToday&&arrived&&!finished;
-  const m=el(`<div><h3>${esc(lot.name||'')}</h3><div class="muted" style="margin-bottom:14px">${esc(lot.address||lot.region||'')}</div>
+  const lot=a.lots||{}, arrived=!!a.arrived_at, finished=!!a.finished_at, lead=!!a.is_lead;
+  const canArrive=isToday&&!arrived, canAct=isToday&&arrived&&!finished;
+  const m=el(`<div><h3>${esc(lot.name||'')} ${lead?'👑':''}</h3><div class="muted" style="margin-bottom:14px">${esc(lot.address||lot.region||'')}</div>
     ${!isToday?`<div class="card" style="border-color:rgba(245,158,11,.4);text-align:center">🔒 ${T('only_today')}</div>`:''}
+    ${lead?`<div class="muted" style="font-size:12px;margin-bottom:10px">👑 ${T('team_lead')}</div>`:''}
     <div class="stack">
       <button class="btn big" id="nav">${T('btn_nav')}</button>
       <a class="btn ghost" id="waze" target="_blank" rel="noopener">${T('btn_waze')}</a>
       <button class="btn ${canArrive?'gold':'ghost'} big" id="arrive" ${canArrive?'':'disabled'}>${arrived?'✓ '+T('arrived_at')+fmtTime(a.arrived_at):T('btn_arrived')}</button>
-      <button class="btn ${canFinish?'gold':'ghost'} big" id="finish" ${canFinish?'':'disabled'}>${finished?'✓ '+T('finished_at')+fmtTime(a.finished_at):T('btn_finish')}</button>
+      ${finished?`<button class="btn ghost big" disabled>✓ ${T('finished_at')}${fmtTime(a.finished_at)}</button>`:`
+        <button class="btn ${canAct?'gold':'ghost'} big" id="report" ${canAct?'':'disabled'}>📸 ${lead?T('photo_report'):T('report_now')}</button>
+        ${!lead?`<button class="btn big" id="endshift" ${canAct?'':'disabled'}>🏁 ${T('end_shift')}</button>`:''}`}
     </div></div>`);
   const back=openModal(m);
   m.querySelector('#nav').onclick=()=>window.open(navUrl(lot),'_blank');
@@ -1002,7 +1067,11 @@ function jobModal(a,isToday){
     const g=await getGPS(); const rec={type:'arrive',assignment_id:a.id,arrived_at:new Date().toISOString(),lat:g?.lat,lng:g?.lng};
     try{ const res=await submitAction(rec); toast(res==='queued'?T('toast_offline_saved'):T('toast_arrived')); back.remove(); render(); }
     catch(err){ toast(T('err_generic')+(err.message||'')); btn.disabled=false; btn.textContent=T('btn_arrived'); } };
-  if(canFinish) m.querySelector('#finish').onclick=()=>{ back.remove(); finishForm(a); };
+  const rp=m.querySelector('#report'); if(rp&&canAct) rp.onclick=()=>{ back.remove(); finishForm(a); };
+  const es=m.querySelector('#endshift'); if(es&&canAct) es.onclick=async(e)=>{ const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+    const g=await getGPS(); const rec={type:'endshift',assignment_id:a.id,finished_at:new Date().toISOString(),lat:g?.lat,lng:g?.lng};
+    try{ const res=await submitAction(rec); toast(res==='queued'?T('toast_offline_saved'):T('toast_sent')); back.remove(); render(); }
+    catch(err){ toast(T('err_generic')+(err.message||'')); btn.disabled=false; btn.textContent='🏁 '+T('end_shift'); } };
 }
 function finishForm(a){
   const f=el(`<div><h3>${T('finish_title')} · ${esc(a.lots?.name||'')}</h3>
@@ -1032,6 +1101,31 @@ function finishForm(a){
   };
 }
 function stepperHTML(id){ return `<div class="stepper"><button type="button" data-step="-1" data-for="${id}">−</button><input id="${id}" type="number" inputmode="numeric" value="0" min="0"/><button type="button" data-step="1" data-for="${id}">＋</button></div>`; }
+function myMonthlyReport(){
+  const nowM=todayStr().slice(0,7);
+  const f=el(`<div><h3>${T('my_month_title')}</h3>
+    <label class="field"><span>${T('pick_month')}</span><input type="month" id="mm" value="${nowM}"/></label>
+    <div id="mmBody"></div></div>`);
+  openModal(f);
+  const load=async()=>{
+    const ym=f.querySelector('#mm').value||nowM; const from=ym+'-01';
+    const [y,mo]=ym.split('-').map(Number); const to=ymd(new Date(y,mo,0)); // last day of month
+    const body=f.querySelector('#mmBody'); body.innerHTML='<div class="empty"><span class="spin"></span></div>';
+    const {data:asgs}=await db.from('assignments').select('work_date, arrived_at, finished_at, is_lead, lots(name,region)').eq('employee_id',ME.id).is('deleted_at',null).gte('work_date',from).lte('work_date',to).order('work_date');
+    if(!asgs||!asgs.length){ body.innerHTML=`<div class="muted" style="margin-top:8px">${T('month_empty')}</div>`; return; }
+    let totMs=0; const lines=asgs.map(a=>{ let hrs=''; if(a.arrived_at&&a.finished_at){ const ms=Math.max(0,new Date(a.finished_at)-new Date(a.arrived_at)); totMs+=ms; hrs=' · '+(ms/3600000).toFixed(1)+T('u_hours'); }
+      return `${fmtDate(a.work_date)} · ${esc(a.lots?.name||'')}${a.is_lead?' 👑':''}${hrs}`; });
+    body.innerHTML=`<div class="card" style="margin:0 0 10px"><div class="row between"><span style="font-weight:800">${T('rep_total')}</span><span>${asgs.length} ${T('u_days')} · ${(totMs/3600000).toFixed(1)} ${T('u_hours')}</span></div></div>
+      <div class="stack">${lines.map(l=>`<div class="card" style="margin:0">${l}</div>`).join('')}</div>
+      <button class="btn gold" id="mmShare" style="margin-top:12px">${T('share_report')}</button>`;
+    body.querySelector('#mmShare').onclick=()=>{
+      const text=`${T('my_month_title')} — ${ym}\n${esc(ME.full_name||'')}\n\n`+lines.join('\n')+`\n\n${T('rep_total')}: ${asgs.length} ${T('u_days')} · ${(totMs/3600000).toFixed(1)} ${T('u_hours')}`;
+      if(navigator.share){ navigator.share({title:T('my_month_title'),text}).catch(()=>{}); }
+      else { try{ navigator.clipboard.writeText(text); toast(T('link_copied')); }catch(_){ prompt(T('share_report'),text); } }
+    };
+  };
+  f.querySelector('#mm').onchange=load; load();
+}
 function bindStepper(root,id){ root.querySelectorAll(`[data-for="${id}"]`).forEach(b=>b.onclick=()=>{ const inp=root.querySelector('#'+id); inp.value=Math.max(0,(+inp.value||0)+ +b.dataset.step); }); }
 
 /* ================= SETTINGS + ABOUT ================= */
@@ -1042,6 +1136,7 @@ function renderSettings(v){
     <div class="card"><div class="row between"><span>${T('set_theme')}</span><button class="btn ghost" style="width:auto" id="thBtn">${THEME==='light'?T('theme_light'):T('theme_dark')}</button></div>
       <div class="row between" style="margin-top:10px"><span>${T('set_lang')}</span><button class="btn ghost" style="width:auto" id="lgBtn">${LANGS.find(l=>l[0]===LANG)[1]}</button></div>
       <div class="row between" style="margin-top:10px"><span>${T('lock_on')}</span><input type="checkbox" id="pinTgl" ${hasPin()?'checked':''} style="width:22px;height:22px"/></div></div>
+    ${!isManager(ME.role)?`<button class="btn ghost" id="monthBtn" style="margin-bottom:12px">${T('monthly_report')}</button>`:''}
     <button class="btn ghost" id="aboutBtn" style="margin-bottom:12px">ℹ️ ${T('about_open')}</button>
     <button class="btn gold" id="shareBtn" style="margin-bottom:12px">📤 ${T('share_app')}</button>
     ${isManager(ME.role)?`<button class="btn ghost" id="binBtn" style="margin-bottom:12px">${T('bin_open')}</button>`:''}
@@ -1052,6 +1147,7 @@ function renderSettings(v){
   v.querySelector('#lgBtn').onclick=langMenu;
   v.querySelector('#pinTgl').onchange=e=>{ if(e.target.checked) setPinFlow(); else removePinFlow(); };
   v.querySelector('#aboutBtn').onclick=aboutModal;
+  const monb=v.querySelector('#monthBtn'); if(monb) monb.onclick=myMonthlyReport;
   v.querySelector('#shareBtn').onclick=shareApp;
   const bb=v.querySelector('#binBtn'); if(bb) bb.onclick=binModal;
   const mb=v.querySelector('#mgrBtn'); if(mb) mb.onclick=managersModal;
