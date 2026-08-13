@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.1';
+const APP_VERSION='1.2';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -413,7 +413,15 @@ const DICT={
  loc_from_addr:{he:'🔎 זהה מהכתובת',en:'🔎 From address',ru:'🔎 По адресу',es:'🔎 Desde dirección',ar:'🔎 من العنوان'},
  loc_not_found:{he:'לא נמצא מיקום לכתובת',en:'No location found for the address',ru:'Адрес не найден',es:'No se encontró la dirección',ar:'لم يُعثر على الموقع'},
  u_km:{he:'ק״מ',en:'km',ru:'км',es:'km',ar:'كم'},
- u_m:{he:'מ׳',en:'m',ru:'м',es:'m',ar:'م'}
+ u_m:{he:'מ׳',en:'m',ru:'м',es:'m',ar:'م'},
+ lots_total:{he:'סה״כ מגרשים',en:'Total lots',ru:'Всего площадок',es:'Total de sitios',ar:'إجمالي المواقع'},
+ backup:{he:'💾 גיבוי (הורדת קובץ)',en:'💾 Backup (download)',ru:'💾 Резервная копия',es:'💾 Copia de seguridad',ar:'💾 نسخة احتياطية'},
+ restore_file:{he:'⤵ שחזור מקובץ',en:'⤵ Restore from file',ru:'⤵ Восстановить из файла',es:'⤵ Restaurar desde archivo',ar:'⤵ استعادة من ملف'},
+ backup_done:{he:'הגיבוי הורד',en:'Backup downloaded',ru:'Копия скачана',es:'Copia descargada',ar:'تم تنزيل النسخة'},
+ restore_confirm:{he:'לשחזר מהקובץ? מגרשים ועובדים מהגיבוי יתווספו/יעודכנו. קיימים לא יימחקו.',en:'Restore from file? Lots and workers from the backup are added/updated. Existing data is kept.',ru:'Восстановить из файла? Площадки и работники добавятся/обновятся.',es:'¿Restaurar? Se añaden/actualizan sitios y trabajadores.',ar:'استعادة من الملف؟ تُضاف/تُحدَّث المواقع والعمال.'},
+ restoring:{he:'משחזר…',en:'Restoring…',ru:'Восстановление…',es:'Restaurando…',ar:'جارٍ الاستعادة…'},
+ restore_done:{he:'השחזור הושלם',en:'Restore complete',ru:'Восстановление завершено',es:'Restauración completa',ar:'اكتملت الاستعادة'},
+ restore_bad:{he:'קובץ גיבוי לא תקין',en:'Invalid backup file',ru:'Неверный файл',es:'Archivo no válido',ar:'ملف غير صالح'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 let LANG=localStorage.getItem('cw_lang')||'he';
@@ -772,7 +780,12 @@ async function renderLots(v){
   const {data:lots}=await db.from('lots').select('*').is('deleted_at',null).order('name');
   const REG=[['',T('all_regions')],['north',T('r_north')],['haifa',T('r_haifa')],['sharon',T('r_sharon')],['center',T('r_center')],['jlm',T('r_jlm')],['south',T('r_south')],['__none__',T('region_none')]];
   let show=(lots||[]); if(LOTS_REGION==='__none__') show=show.filter(l=>!l.region); else if(LOTS_REGION) show=show.filter(l=>l.region===LOTS_REGION);
+  const all=lots||[]; const total=all.length; const withPin=all.filter(l=>l.lat&&l.lng).length;
+  const byReg={}; all.forEach(l=>{ const k=l.region||'__none__'; byReg[k]=(byReg[k]||0)+1; });
+  const regSummary=REG.filter(([val])=>val!=='').map(([val,lab])=>byReg[val]?`${lab} ${byReg[val]}`:null).filter(Boolean).join(' · ');
   v.innerHTML=`<h2 class="screen-title">${T('lots_title')}</h2>
+    <div class="card"><div class="row between"><span style="font-weight:800">${T('lots_total')}</span><span>${total} · 📍 ${withPin} · ⚠ ${total-withPin}</span></div>
+      ${regSummary?`<div class="muted" style="font-size:13px;margin-top:8px">${regSummary}</div>`:''}</div>
     <button class="btn gold" id="addLot" style="margin-bottom:12px">${T('btn_add_lot')}</button>
     <label class="field"><span>${T('f_region')}</span><select id="lreg">${REG.map(([val,lab])=>`<option value="${val}" ${LOTS_REGION===val?'selected':''}>${lab}</option>`).join('')}</select></label>
     <div id="lotCards"></div>`;
@@ -1174,6 +1187,7 @@ function renderSettings(v){
     <button class="btn ghost" id="aboutBtn" style="margin-bottom:12px">ℹ️ ${T('about_open')}</button>
     <button class="btn gold" id="shareBtn" style="margin-bottom:12px">📤 ${T('share_app')}</button>
     ${isManager(ME.role)?`<button class="btn ghost" id="binBtn" style="margin-bottom:12px">${T('bin_open')}</button>`:''}
+    ${isManager(ME.role)?`<div class="row" style="gap:8px;margin-bottom:12px"><button class="btn ghost" id="bkBtn" style="flex:1">${T('backup')}</button><button class="btn ghost" id="rsBtn" style="flex:1">${T('restore_file')}</button></div>`:''}
     ${isManager(ME.role)?`<button class="btn ghost" id="mgrBtn" style="margin-bottom:12px">${T('manage_mgrs')}</button>`:''}
     <button class="btn danger" id="lo">${T('btn_logout')}</button>
     <div class="badge">AppNest · v${APP_VERSION}</div>`;
@@ -1184,6 +1198,8 @@ function renderSettings(v){
   const monb=v.querySelector('#monthBtn'); if(monb) monb.onclick=myMonthlyReport;
   v.querySelector('#shareBtn').onclick=shareApp;
   const bb=v.querySelector('#binBtn'); if(bb) bb.onclick=binModal;
+  const bk=v.querySelector('#bkBtn'); if(bk) bk.onclick=doBackup;
+  const rs=v.querySelector('#rsBtn'); if(rs) rs.onclick=doRestore;
   const mb=v.querySelector('#mgrBtn'); if(mb) mb.onclick=managersModal;
   v.querySelector('#lo').onclick=logout;
 }
@@ -1232,6 +1248,27 @@ async function clearLockFor(userId){ const {error}=await db.functions.invoke('cr
   if(error){ let m=error.message; try{ if(error.context){ const j=await error.context.json(); if(j&&j.error) m=j.error; } }catch(_){}
     toast(T('err_generic')+m); return false; } toast(T('toast_lock_cleared')); return true; }
 
+async function doBackup(){
+  const [{data:lots},{data:emps}]=await Promise.all([
+    db.from('lots').select('id,name,client_name,region,address,lat,lng,active').is('deleted_at',null),
+    db.from('profiles').select('id,full_name,username,language,active').eq('role','employee').is('archived_at',null)]);
+  const backup={app:'carwash',version:APP_VERSION,date:new Date().toISOString(),lots:lots||[],employees:emps||[]};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=`carwash_backup_${todayStr()}.json`; a.click(); URL.revokeObjectURL(u);
+  toast(T('backup_done'));
+}
+function doRestore(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json,.json';
+  inp.onchange=async()=>{ const file=inp.files&&inp.files[0]; if(!file) return; if(!confirm(T('restore_confirm'))) return;
+    let data; try{ data=JSON.parse(await file.text()); }catch(_){ toast(T('restore_bad')); return; }
+    if(!data||data.app!=='carwash'||!Array.isArray(data.lots)){ toast(T('restore_bad')); return; }
+    toast(T('restoring'));
+    if(data.lots.length){ const {error}=await db.from('lots').upsert(data.lots,{onConflict:'id'}); if(error){ toast(T('err_generic')+error.message); return; } }
+    for(const e of (data.employees||[])){ try{ await db.from('profiles').upsert({id:e.id,full_name:e.full_name,username:e.username,language:e.language||'he',active:e.active!==false,role:'employee'},{onConflict:'id'}); }catch(_){} }
+    toast(T('restore_done')); render();
+  };
+  inp.click();
+}
 async function binModal(){
   const [{data:lots},{data:asgs},{data:arch}]=await Promise.all([
     db.from('lots').select('*').not('deleted_at','is',null).order('deleted_at',{ascending:false}),
