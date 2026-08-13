@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.0';
+const APP_VERSION='1.1';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -401,7 +401,19 @@ const DICT={
  pick_month:{he:'בחר חודש',en:'Pick a month',ru:'Выберите месяц',es:'Elige un mes',ar:'اختر الشهر'},
  share_report:{he:'📤 שתף דוח',en:'📤 Share report',ru:'📤 Поделиться',es:'📤 Compartir',ar:'📤 مشاركة التقرير'},
  month_empty:{he:'לא נמצאו ימי עבודה בחודש זה.',en:'No work days found this month.',ru:'Нет рабочих дней в этом месяце.',es:'Sin días de trabajo este mes.',ar:'لا أيام عمل هذا الشهر.'},
- my_month_title:{he:'הדוח החודשי שלי',en:'My monthly report',ru:'Мой месячный отчёт',es:'Mi informe mensual',ar:'تقريري الشهري'}
+ my_month_title:{he:'הדוח החודשי שלי',en:'My monthly report',ru:'Мой месячный отчёт',es:'Mi informe mensual',ar:'تقريري الشهري'},
+ q_lastweek:{he:'שבוע שעבר',en:'Last week',ru:'Прошлая неделя',es:'Semana pasada',ar:'الأسبوع الماضي'},
+ q_lastmonth:{he:'חודש שעבר',en:'Last month',ru:'Прошлый месяц',es:'Mes pasado',ar:'الشهر الماضي'},
+ archive_emp:{he:'הסר מהרשימה (ארכוב)',en:'Remove from list (archive)',ru:'Убрать из списка (архив)',es:'Quitar de la lista (archivar)',ar:'إزالة من القائمة (أرشفة)'},
+ archive_confirm:{he:'להסיר את העובד מהרשימות? ההיסטוריה שלו תישמר, אך הוא ייעלם וההתחברות שלו תיחסם.',en:"Remove this worker from the lists? Their history is kept, but they disappear and their login is blocked.",ru:'Убрать работника из списков? История сохранится, вход будет заблокирован.',es:'¿Quitar al trabajador de las listas? Se conserva su historial y se bloquea su acceso.',ar:'إزالة العامل من القوائم؟ يُحفظ سجله ويُحظر دخوله.'},
+ toast_archived:{he:'העובד הועבר לארכיון',en:'Worker archived',ru:'Работник в архиве',es:'Trabajador archivado',ar:'تمت أرشفة العامل'},
+ bin_emps:{he:'עובדים בארכיון',en:'Archived workers',ru:'Работники в архиве',es:'Trabajadores archivados',ar:'عمّال مؤرشفون'},
+ username_taken:{he:'שם המשתמש הזה תפוס, נסה שם אחר',en:'That username is taken, try another',ru:'Это имя занято, попробуйте другое',es:'Ese usuario ya existe, prueba otro',ar:'اسم المستخدم مأخوذ، جرّب آخر'},
+ fix_location:{he:'📍 תקן מיקום',en:'📍 Fix location',ru:'📍 Исправить точку',es:'📍 Corregir ubicación',ar:'📍 تصحيح الموقع'},
+ loc_from_addr:{he:'🔎 זהה מהכתובת',en:'🔎 From address',ru:'🔎 По адресу',es:'🔎 Desde dirección',ar:'🔎 من العنوان'},
+ loc_not_found:{he:'לא נמצא מיקום לכתובת',en:'No location found for the address',ru:'Адрес не найден',es:'No se encontró la dirección',ar:'لم يُعثر على الموقع'},
+ u_km:{he:'ק״מ',en:'km',ru:'км',es:'km',ar:'كم'},
+ u_m:{he:'מ׳',en:'m',ru:'м',es:'m',ar:'م'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 let LANG=localStorage.getItem('cw_lang')||'he';
@@ -467,6 +479,7 @@ function distM(aLat,aLng,bLat,bLng){ // Haversine, metres
   const h=Math.sin(dLat/2)**2+Math.cos(rad(aLat))*Math.cos(rad(bLat))*Math.sin(dLng/2)**2;
   return Math.round(R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h)));
 }
+function distLabel(m){ if(m==null) return ''; return m>=1000 ? (m/1000).toFixed(1)+' '+T('u_km') : m+' '+T('u_m'); }
 async function geocode(address){ // free OpenStreetMap geocoding, best-effort, Israel-biased
   try{
     const u=`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&q=${encodeURIComponent(address)}`;
@@ -554,6 +567,15 @@ async function flushQueue(silent){
 }
 async function pendingSet(){ const items=await qAll(); return new Set(items.map(r=>r.assignment_id)); }
 async function pendingCount(){ return (await qAll()).length; }
+/* overlay queued (offline) actions onto the assignments so the worker can keep going */
+async function applyQueue(asgs){
+  const items=await qAll(); const pend=new Set(); const byId={}; asgs.forEach(a=>byId[a.id]=a);
+  items.forEach(r=>{ const a=byId[r.assignment_id]; if(!a) return; pend.add(a.id);
+    if(r.type==='arrive'){ if(!a.arrived_at){ a.arrived_at=r.arrived_at; a.arrived_lat=r.lat; a.arrived_lng=r.lng; } }
+    else if(r.type==='endshift'||r.type==='finish'){ if(!a.arrived_at) a.arrived_at=r.finished_at; if(!a.finished_at){ a.finished_at=r.finished_at; a.finished_lat=r.lat; a.finished_lng=r.lng; } }
+  });
+  return pend;
+}
 window.addEventListener('online',()=>flushQueue(false));
 
 /* ================= MODAL ================= */
@@ -655,6 +677,7 @@ async function renderDash(v){
      <div class="row" style="gap:8px"><label class="field" style="flex:1;margin:0"><span>${T('f_from')}</span><input type="date" id="d_from" value="${DASH_FROM}"/></label>
        <label class="field" style="flex:1;margin:0"><span>${T('f_to')}</span><input type="date" id="d_to" value="${DASH_TO}"/></label></div>
      <div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost" id="d_today">${T('today')}</button><button class="btn ghost" id="d_week">${T('q_week')}</button><button class="btn ghost" id="d_month">${T('q_month')}</button></div>
+     <div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost" id="d_lastweek">${T('q_lastweek')}</button><button class="btn ghost" id="d_lastmonth">${T('q_lastmonth')}</button></div>
      <label class="field" style="margin:12px 0 0"><span>${T('f_region')}</span><select id="d_region">${REG.map(([val,lab])=>`<option value="${val}" ${DASH_REGION===val?'selected':''}>${lab}</option>`).join('')}</select></label>
    </div>
    ${redCount?`<div class="card" style="border-color:rgba(239,68,68,.4)"><span class="pill s-red">${redCount} ${T('red_alert')}</span></div>`:''}
@@ -662,8 +685,10 @@ async function renderDash(v){
   const rerun=()=>{ DASH_FROM=v.querySelector('#d_from').value; DASH_TO=v.querySelector('#d_to').value; DASH_REGION=v.querySelector('#d_region').value; render(); };
   v.querySelector('#d_from').onchange=rerun; v.querySelector('#d_to').onchange=rerun; v.querySelector('#d_region').onchange=rerun;
   v.querySelector('#d_today').onclick=()=>{ DASH_FROM=DASH_TO=todayStr(); render(); };
-  v.querySelector('#d_week').onclick=()=>{ DASH_TO=todayStr(); DASH_FROM=shiftDate(todayStr(),-6); render(); };
-  v.querySelector('#d_month').onclick=()=>{ DASH_TO=todayStr(); DASH_FROM=shiftDate(todayStr(),-29); render(); };
+  v.querySelector('#d_week').onclick=()=>{ DASH_FROM=todayStr(); DASH_TO=shiftDate(todayStr(),6); render(); };
+  v.querySelector('#d_month').onclick=()=>{ DASH_FROM=todayStr(); DASH_TO=shiftDate(todayStr(),29); render(); };
+  v.querySelector('#d_lastweek').onclick=()=>{ DASH_TO=todayStr(); DASH_FROM=shiftDate(todayStr(),-6); render(); };
+  v.querySelector('#d_lastmonth').onclick=()=>{ DASH_TO=todayStr(); DASH_FROM=shiftDate(todayStr(),-29); render(); };
   const list=v.querySelector('#dashList');
   const dates=Object.keys(byDate).sort();
   if(!dates.length){ list.innerHTML=`<div class="empty">${T('dash_empty')}</div>`; return; }
@@ -680,7 +705,7 @@ async function renderDash(v){
           ${lrows.map(a=>{ const[cls,txt]=statusOf(a);
             const d=a.arrived_at?distM(a.arrived_lat,a.arrived_lng,lot?.lat,lot?.lng):null; const far=(d!=null&&d>GEOFENCE_M);
             return `<div class="row between">
-              <span class="row" style="gap:6px">${a.is_lead?'👑 ':''}${esc(empMap[a.employee_id]||T('role_employee'))}${far?`<span class="pill s-amber">⚠︎ ${T('far_flag')} ${d}m</span>`:''}</span>
+              <span class="row" style="gap:6px">${a.is_lead?'👑 ':''}${esc(empMap[a.employee_id]||T('role_employee'))}${far?`<span class="pill s-amber">⚠︎ ${T('far_flag')} ${distLabel(d)}</span>`:''}</span>
               <span class="row" style="gap:8px">${a.arrived_at?`<span class="muted" style="font-size:11px">${fmtTime(a.arrived_at)}${a.finished_at?'–'+fmtTime(a.finished_at):''}</span>`:''}
               <span class="pill ${cls}">${txt}</span>
               <button class="btn ghost" style="width:auto;padding:4px 9px" data-del="${a.id}">🗑️</button></span></div>`; }).join('')}
@@ -768,13 +793,16 @@ function lotForm(existing){
     <label class="field"><span>${T('f_client')}</span><input id="l_client" value="${existing?esc(existing.client_name||''):''}"/></label>
     <label class="field"><span>${T('f_region')}</span><select id="l_region">${R.map(([v,l])=>`<option value="${v}" ${existing&&existing.region===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="field"><span>${T('f_address')}</span><input id="l_addr" value="${existing?esc(existing.address||''):''}"/></label>
-    <button class="btn ghost" id="l_here" style="margin-bottom:6px">${coords?T('loc_ok'):T('btn_here')}</button>
+    <div class="row" style="gap:8px;margin-bottom:6px"><button class="btn ghost" id="l_here" style="flex:1">${coords?T('loc_ok'):T('btn_here')}</button><button class="btn ghost" id="l_geo" style="flex:1">${T('loc_from_addr')}</button></div>
     <div class="muted" style="font-size:12px;margin-bottom:12px">${T('geo_hint')}</div>
     <button class="btn gold big" id="l_save">${T('btn_save_lot')}</button>
     ${existing?`<button class="btn danger" id="l_del" style="margin-top:10px">${T('btn_delete')}</button>`:''}</div>`);
   const back=openModal(f);
   f.querySelector('#l_here').onclick=async(e)=>{ const b=e.target; b.innerHTML='<span class="spin"></span>';
     const g=await getGPS(); if(g){ coords=g; b.textContent=T('loc_ok'); } else { b.textContent=T('btn_here'); toast('GPS ✕'); } };
+  f.querySelector('#l_geo').onclick=async(e)=>{ const addr=f.querySelector('#l_addr').value.trim(); if(!addr){ toast(T('f_address')); return; }
+    const b=e.target; b.innerHTML='<span class="spin"></span>'; const g=await geocode(addr); b.textContent=T('loc_from_addr');
+    if(g){ coords=g; f.querySelector('#l_here').textContent=T('loc_ok'); toast(T('loc_ok')); } else toast(T('loc_not_found')); };
   f.querySelector('#l_save').onclick=async(e)=>{
     const name=f.querySelector('#l_name').value.trim(); if(!name){ toast(T('err_no_lotname')); return; }
     const addr=f.querySelector('#l_addr').value.trim();
@@ -825,10 +853,10 @@ function genDates(start,dows,weeks){ const[y,m,d]=start.split('-').map(Number); 
   for(let i=0;i<weeks*7;i++){ const dt=new Date(s); dt.setDate(s.getDate()+i); if(set.has(dt.getDay())) out.push(ymd(dt)); } return out; }
 
 /* ================= EMPLOYEES helpers ================= */
-async function employeeList(){ const {data}=await db.from('profiles').select('id,full_name').eq('role','employee').eq('active',true).order('full_name'); return data||[]; }
+async function employeeList(){ const {data}=await db.from('profiles').select('id,full_name').eq('role','employee').eq('active',true).is('archived_at',null).order('full_name'); return data||[]; }
 async function employeeMap(){ const l=await employeeList(); const m={}; l.forEach(e=>m[e.id]=e.full_name); return m; }
 async function renderEmps(v){
-  const {data:emps}=await db.from('profiles').select('id,full_name,username,active').eq('role','employee').order('full_name');
+  const {data:emps}=await db.from('profiles').select('id,full_name,username,active').eq('role','employee').is('archived_at',null).order('full_name');
   const active=(emps||[]).filter(e=>e.active), inactive=(emps||[]).filter(e=>!e.active);
   v.innerHTML=`<h2 class="screen-title">${T('emps_title')}</h2>
     <button class="btn gold" id="addEmp" style="margin-bottom:14px">${T('add_emp')}</button>
@@ -851,9 +879,14 @@ async function empDetail(id){
     <div class="card" style="margin:14px 0 0"><h3 style="margin:0 0 10px">${T('reset_pass')}</h3>
       <div class="row" style="gap:8px"><input id="d_pass" placeholder="${T('new_pass')}"/><button class="btn" style="width:auto" id="d_setpass">${T('btn_set_pass')}</button></div></div>
     <button class="btn ghost" id="d_clearlock" style="margin-top:12px">🔓 ${T('clear_lock')}</button>
+    ${!e.active?`<button class="btn danger" id="d_archive" style="margin-top:12px">🗄️ ${T('archive_emp')}</button>`:''}
     </div>`);
   const back=openModal(m);
   m.querySelector('#d_clearlock').onclick=async()=>{ if(await clearLockFor(id)) back.remove(); };
+  const arb=m.querySelector('#d_archive'); if(arb) arb.onclick=async()=>{ if(!confirm(T('archive_confirm'))) return;
+    const {error}=await db.functions.invoke('create-employee',{body:{action:'archive',user_id:id}});
+    if(error){ let mm=error.message; try{ if(error.context){ const j=await error.context.json(); if(j&&j.error) mm=j.error; } }catch(_){} toast(T('err_generic')+mm); return; }
+    back.remove(); toast(T('toast_archived')); render(); };
   m.querySelector('#d_save').onclick=async(ev)=>{ const b=ev.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
     const {error}=await db.from('profiles').update({full_name:m.querySelector('#d_name').value.trim(),language:m.querySelector('#d_lang').value,active:m.querySelector('#d_active').checked}).eq('id',id);
     if(error){ toast(T('err_generic')+error.message); b.disabled=false; b.textContent=T('btn_save'); return; }
@@ -883,7 +916,7 @@ function empForm(){
     if(error||(data&&data.error)){
       let msg=(data&&data.error)||error?.message||'';
       try{ if(error&&error.context){ const j=await error.context.json(); if(j&&j.error) msg=j.error; } }catch(_){}
-      toast(T('err_generic')+msg); b.disabled=false; b.textContent=T('btn_create_emp'); return;
+      toast(msg==='username_taken'?T('username_taken'):T('err_generic')+msg); b.disabled=false; b.textContent=T('btn_create_emp'); return;
     }
     back.remove(); toast(T('toast_emp_added')); render();
   };
@@ -939,7 +972,7 @@ function mgrForm(){
     const {data,error}=await db.functions.invoke('create-employee',{body:{role:'manager',username,password,full_name:f.querySelector('#g_name').value.trim()}});
     if(error||(data&&data.error)){ let msg=(data&&data.error)||error?.message||'';
       try{ if(error&&error.context){ const j=await error.context.json(); if(j&&j.error) msg=j.error; } }catch(_){}
-      toast(T('err_generic')+msg); b.disabled=false; b.textContent=T('btn_create_emp'); return; }
+      toast(msg==='username_taken'?T('username_taken'):T('err_generic')+msg); b.disabled=false; b.textContent=T('btn_create_emp'); return; }
     back.remove(); toast(T('toast_mgr_added'));
   };
 }
@@ -1023,7 +1056,7 @@ async function renderMyDay(v){
     if(r1.error) throw r1.error; asgs=r1.data||[];
     try{ localStorage.setItem('cw_myday_'+ME.id, JSON.stringify({asgs})); }catch(_){}
   }catch(e){ offline=true; try{ const c=JSON.parse(localStorage.getItem('cw_myday_'+ME.id)||'null'); if(c){ asgs=c.asgs||[]; } }catch(_){} }
-  const pend=await pendingSet(); const pc=pend.size;
+  const pend=await applyQueue(asgs); const pc=await pendingCount();
   v.innerHTML=`<h2 class="screen-title">${T('myday_title')}</h2>
     ${offline?`<div class="card" style="border-color:rgba(245,158,11,.4)"><span class="muted">${T('offline_cache')}</span></div>`:''}
     ${pc?`<div class="card row between" style="border-color:rgba(245,158,11,.4)"><span class="pill s-amber">${pc} ${T('pending_banner')}</span><button class="btn ghost" style="width:auto" id="retry">${T('btn_retry')}</button></div>`:''}
@@ -1037,11 +1070,12 @@ async function renderMyDay(v){
     const label=dt===todayStr()?T('today'):(dt===tmr?T('tomorrow'):fmtDate(dt));
     wrap.appendChild(el(`<div style="margin:16px 2px 8px;font-weight:800;color:${dt===todayStr()?'var(--gold)':'var(--muted)'}">${label}</div>`));
     byDate[dt].forEach(a=>{ const isToday=dt===todayStr(); const pending=pend.has(a.id);
-      let cls,txt; if(pending){ cls='s-amber'; txt=T('pending_send'); } else { const s=statusOf(a); cls=s[0]; txt=s[1]; }
+      const [cls,txt]=statusOf(a);
       const c=el(`<div class="card" style="margin:0 0 10px"><div class="row between"><h3 style="margin:0">${esc(a.lots?.name||'')} ${a.is_lead?'👑':''}</h3><span class="pill ${cls}">${txt}</span></div>
         <div class="muted" style="font-size:13px;margin-top:4px">${esc(a.lots?.address||a.lots?.region||'')}</div>
-        ${!isToday&&!pending?`<div class="muted" style="font-size:12px;margin-top:6px">🔒 ${T('only_today')}</div>`:''}</div>`);
-      if(!pending){ c.style.cursor='pointer'; c.onclick=()=>jobModal(a,isToday); }
+        ${pending?`<div style="margin-top:6px"><span class="pill s-amber">⏳ ${T('pending_send')}</span></div>`:''}
+        ${!isToday?`<div class="muted" style="font-size:12px;margin-top:6px">🔒 ${T('only_today')}</div>`:''}</div>`);
+      c.style.cursor='pointer'; c.onclick=()=>jobModal(a,isToday);
       wrap.appendChild(c);
     });
   });
@@ -1199,19 +1233,23 @@ async function clearLockFor(userId){ const {error}=await db.functions.invoke('cr
     toast(T('err_generic')+m); return false; } toast(T('toast_lock_cleared')); return true; }
 
 async function binModal(){
-  const [{data:lots},{data:asgs}]=await Promise.all([
+  const [{data:lots},{data:asgs},{data:arch}]=await Promise.all([
     db.from('lots').select('*').not('deleted_at','is',null).order('deleted_at',{ascending:false}),
-    db.from('assignments').select('*, lots(name)').not('deleted_at','is',null).order('deleted_at',{ascending:false})]);
+    db.from('assignments').select('*, lots(name)').not('deleted_at','is',null).order('deleted_at',{ascending:false}),
+    db.from('profiles').select('id,full_name,username').eq('role','employee').not('archived_at','is',null).order('full_name')]);
   const empMap=await employeeMap();
   const m=el(`<div><h3>${T('bin_title')}</h3><div id="binBody"></div><button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
   const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
-  const body=m.querySelector('#binBody'); const nL=(lots||[]).length, nA=(asgs||[]).length;
-  if(!nL&&!nA){ body.innerHTML=`<div class="empty">${T('bin_empty')}</div>`; return; }
-  const mkRow=(label,restoreFn,purgeFn)=>{ const c=el(`<div class="card" style="margin:0 0 10px"><div style="margin-bottom:8px">${label}</div><div class="row" style="gap:8px"><button class="btn ghost" data-r="1">${T('restore')}</button><button class="btn danger" data-p="1">${T('delete_forever')}</button></div></div>`);
+  const body=m.querySelector('#binBody'); const nL=(lots||[]).length, nA=(asgs||[]).length, nE=(arch||[]).length;
+  if(!nL&&!nA&&!nE){ body.innerHTML=`<div class="empty">${T('bin_empty')}</div>`; return; }
+  const mkRow=(label,restoreFn,purgeFn)=>{ const c=el(`<div class="card" style="margin:0 0 10px"><div style="margin-bottom:8px">${label}</div><div class="row" style="gap:8px"><button class="btn ghost" data-r="1">${T('restore')}</button>${purgeFn?`<button class="btn danger" data-p="1">${T('delete_forever')}</button>`:''}</div></div>`);
     c.querySelector('[data-r]').onclick=async()=>{ await restoreFn(); toast(T('toast_restored')); back.remove(); binModal(); render(); };
-    c.querySelector('[data-p]').onclick=async()=>{ if(!confirm(T('delete_forever')+'?')) return; await purgeFn(); toast(T('toast_deleted')); back.remove(); binModal(); };
+    const pb=c.querySelector('[data-p]'); if(pb) pb.onclick=async()=>{ if(!confirm(T('delete_forever')+'?')) return; await purgeFn(); toast(T('toast_deleted')); back.remove(); binModal(); };
     return c; };
-  if(nL){ body.appendChild(el(`<div style="margin:6px 2px 8px;font-weight:800;color:var(--gold)">${T('bin_lots')} (${nL})</div>`));
+  if(nE){ body.appendChild(el(`<div style="margin:6px 2px 8px;font-weight:800;color:var(--gold)">${T('bin_emps')} (${nE})</div>`));
+    arch.forEach(e=>body.appendChild(mkRow(`👤 ${esc(e.full_name||'')} <span class="muted" style="font-size:12px">@${esc(e.username||'')}</span>`,
+      ()=>db.functions.invoke('create-employee',{body:{action:'unarchive',user_id:e.id}}), null))); }  // restore only
+  if(nL){ body.appendChild(el(`<div style="margin:14px 2px 8px;font-weight:800;color:var(--muted)">${T('bin_lots')} (${nL})</div>`));
     lots.forEach(l=>body.appendChild(mkRow(`📍 ${esc(l.name)} <span class="muted" style="font-size:12px">${esc(l.region||'')}</span>`,
       ()=>db.from('lots').update({deleted_at:null}).eq('id',l.id), ()=>db.from('lots').delete().eq('id',l.id)))); }
   if(nA){ body.appendChild(el(`<div style="margin:14px 2px 8px;font-weight:800;color:var(--muted)">${T('bin_asgs')} (${nA})</div>`));
