@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.6';
+const APP_VERSION='1.7';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -436,7 +436,12 @@ const DICT={
  sched_hint:{he:'העובד הזה יהיה ראש הצוות במגרשים שתבחר לו לכל יום.',en:'This worker will be the team lead at the lots you pick for each day.',ru:'Этот работник — бригадир на выбранных площадках.',es:'Este trabajador será el jefe en los sitios elegidos.',ar:'سيكون هذا العامل رئيس الفريق في المواقع المختارة.'},
  add_lot_day:{he:'הוסף מגרש',en:'Add lot',ru:'Добавить площадку',es:'Añadir sitio',ar:'أضف موقعًا'},
  unavailable_until:{he:'לא זמין עד (חופשה)',en:'Unavailable until (leave)',ru:'Недоступен до (отпуск)',es:'No disponible hasta',ar:'غير متاح حتى (إجازة)'},
- sched_saved:{he:'הסידור הקבוע נשמר',en:'Permanent schedule saved',ru:'График сохранён',es:'Horario guardado',ar:'تم حفظ الجدول'}
+ sched_saved:{he:'הסידור הקבוע נשמר',en:'Permanent schedule saved',ru:'График сохранён',es:'Horario guardado',ar:'تم حفظ الجدول'},
+ sched_section:{he:'סידור קבוע',en:'Permanent schedule',ru:'Постоянный график',es:'Horario fijo',ar:'الجدول الثابت'},
+ sched_pick_emp:{he:'בחר עובד לסידור קבוע…',en:'Choose a worker for a permanent schedule…',ru:'Выберите работника…',es:'Elige un trabajador…',ar:'اختر عاملًا للجدول الثابت…'},
+ sched_delete:{he:'מחק סידור קבוע',en:'Delete permanent schedule',ru:'Удалить график',es:'Eliminar horario',ar:'حذف الجدول الثابت'},
+ sched_delete_confirm:{he:'למחוק את כל הסידור הקבוע של העובד? השיבוצים העתידיים שנוצרו ממנו יוסרו.',en:"Delete this worker's entire permanent schedule? Future generated shifts will be removed.",ru:'Удалить весь постоянный график работника?',es:'¿Eliminar todo el horario fijo del trabajador?',ar:'حذف كامل الجدول الثابت للعامل؟'},
+ sched_deleted:{he:'הסידור הקבוע נמחק',en:'Permanent schedule deleted',ru:'График удалён',es:'Horario eliminado',ar:'تم حذف الجدول'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 const DOWF={he:['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],en:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],ru:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'],es:['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],ar:['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']};
@@ -738,8 +743,13 @@ async function scheduleModal(empId){
     <div class="muted" style="font-size:12px;margin-bottom:12px">👑 ${T('sched_hint')}</div>
     <label class="field"><span>${T('unavailable_until')}</span><input type="date" id="unav" value="${emp.unavailable_until||''}"/></label>
     <div id="days"></div>
-    <button class="btn gold big" id="sv" style="margin-top:12px">${T('btn_save')}</button></div>`);
+    <button class="btn gold big" id="sv" style="margin-top:12px">${T('btn_save')}</button>
+    <button class="btn danger" id="delsched" style="margin-top:10px">🗑️ ${T('sched_delete')}</button></div>`);
   const back=openModal(m); const dv=m.querySelector('#days');
+  m.querySelector('#delsched').onclick=async(e)=>{ if(!confirm(T('sched_delete_confirm'))) return; const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    try{ await db.from('schedule_templates').delete().eq('employee_id',empId); await generateFromTemplates(true); }
+    catch(err){ toast(T('err_generic')+(err.message||'')); b.disabled=false; b.textContent='🗑️ '+T('sched_delete'); return; }
+    back.remove(); toast(T('sched_deleted')); render(); };
   const paint=()=>{ dv.innerHTML=''; days.forEach(d=>{
     const card=el(`<div class="card" style="margin:0 0 10px"><div style="font-weight:800;margin-bottom:8px">${dayName(d)}</div><div class="chips"></div>
       <select class="addlot" style="margin-top:8px"><option value="">＋ ${T('add_lot_day')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}${l.region?' · '+esc(l.region):''}</option>`).join('')}</select></div>`);
@@ -988,8 +998,12 @@ async function renderAssign(v){
     <div class="muted" style="font-size:13px;margin-top:14px">${T('assign_repeat')}</div>
     <div class="row" style="gap:6px;margin-top:8px" id="a_dows">${(DOW[LANG]||DOW.en).map((d,i)=>`<button type="button" class="btn ghost dow" data-d="${i}" style="padding:10px 0">${d}</button>`).join('')}</div>
     <label class="field" style="margin-top:10px"><span>${T('weeks_ahead')}</span><input type="number" id="a_weeks" value="4" min="1" max="12"/></label>
-    <button class="btn gold big" id="a_save" style="margin-top:6px">${T('btn_assign')}</button></div>`;
+    <button class="btn gold big" id="a_save" style="margin-top:6px">${T('btn_assign')}</button></div>
+    <div style="margin:22px 2px 8px;font-weight:800;color:var(--gold)">📋 ${T('sched_section')}</div>
+    <div class="muted" style="font-size:12px;margin:0 2px 8px">👑 ${T('sched_hint')}</div>
+    <select id="a_schedemp" class="field" style="width:100%"><option value="">${T('sched_pick_emp')}</option>${(emps||[]).map(e=>`<option value="${e.id}">${esc(e.full_name||T('role_employee'))}</option>`).join('')}</select>`;
   v.querySelectorAll('.dow').forEach(b=>b.onclick=()=>b.classList.toggle('gold'));
+  const se=v.querySelector('#a_schedemp'); if(se) se.onchange=e=>{ if(e.target.value){ const id=e.target.value; e.target.value=''; scheduleModal(id); } };
   if(ASSIGN_LOT){ const sel=v.querySelector('#a_lot'); if(sel) sel.value=ASSIGN_LOT; ASSIGN_LOT=''; }
   let leadId=null;
   v.querySelectorAll('.a_lead').forEach(b=>b.onclick=()=>{ leadId=(leadId===b.dataset.e)?null:b.dataset.e;
@@ -1037,13 +1051,11 @@ async function empDetail(id){
     <button class="btn gold big" id="d_save">${T('btn_save')}</button>
     <div class="card" style="margin:14px 0 0"><h3 style="margin:0 0 10px">${T('reset_pass')}</h3>
       <div class="row" style="gap:8px"><input id="d_pass" placeholder="${T('new_pass')}"/><button class="btn" style="width:auto" id="d_setpass">${T('btn_set_pass')}</button></div></div>
-    <button class="btn gold" id="d_sched" style="margin-top:14px">${T('open_schedule')}</button>
-    <button class="btn ghost" id="d_clearlock" style="margin-top:12px">🔓 ${T('clear_lock')}</button>
+    <button class="btn ghost" id="d_clearlock" style="margin-top:14px">🔓 ${T('clear_lock')}</button>
     ${!e.active?`<button class="btn danger" id="d_archive" style="margin-top:12px">🗄️ ${T('archive_emp')}</button>`:''}
     </div>`);
   const back=openModal(m);
   m.querySelector('#d_clearlock').onclick=async()=>{ if(await clearLockFor(id)) back.remove(); };
-  m.querySelector('#d_sched').onclick=()=>{ back.remove(); scheduleModal(id); };
   const arb=m.querySelector('#d_archive'); if(arb) arb.onclick=async()=>{ if(!confirm(T('archive_confirm'))) return;
     const {error}=await db.functions.invoke('create-employee',{body:{action:'archive',user_id:id}});
     if(error){ let mm=error.message; try{ if(error.context){ const j=await error.context.json(); if(j&&j.error) mm=j.error; } }catch(_){} toast(T('err_generic')+mm); return; }
