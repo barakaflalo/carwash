@@ -47,7 +47,7 @@
   .hbtns{display:flex;gap:8px}
   .iconbtn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
     background:var(--surface);color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center}
-  main{flex:1;padding:16px 16px 96px}
+  main{flex:1;padding:16px 16px 150px}
   h2.screen-title{font-size:20px;margin:4px 2px 14px}
   .muted{color:var(--muted)}
 
@@ -80,11 +80,11 @@
   .s-red{color:var(--red);background:rgba(239,68,68,.16)}
   .s-amber{color:var(--amber);background:rgba(245,158,11,.16)}
 
-  nav.bottom{position:fixed;bottom:0;left:0;right:0;max-width:760px;margin:0 auto;display:flex;
+  nav.bottom{position:fixed;bottom:0;left:0;right:0;max-width:760px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:center;
     background:var(--surface);backdrop-filter:blur(10px);border-top:1px solid var(--line);
     padding-bottom:env(safe-area-inset-bottom);z-index:20}
-  nav.bottom button{flex:1;background:none;border:none;color:var(--muted);padding:10px 2px 12px;font-size:11px;
-    display:flex;flex-direction:column;align-items:center;gap:4px}
+  nav.bottom button{flex:0 0 25%;background:none;border:none;color:var(--muted);padding:9px 2px 10px;font-size:11px;
+    display:flex;flex-direction:column;align-items:center;gap:3px}
   nav.bottom button .ic{font-size:19px}
   nav.bottom button.active{color:var(--gold)}
 
@@ -111,7 +111,7 @@
   .langrow{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface2);margin-bottom:8px;font-size:16px}
   .langrow.active{border-color:var(--gold)}
 
-  #toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--line);
+  #toast{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--line);
     color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;z-index:60;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
   #toast.show{opacity:1}
   .empty{text-align:center;color:var(--muted);padding:40px 10px}
@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.4';
+const APP_VERSION='1.5';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
