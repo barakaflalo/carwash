@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.7';
+const APP_VERSION='1.8';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -731,6 +731,20 @@ async function generateFromTemplates(force){
     localStorage.setItem('cw_gen_last',today);
   }catch(e){ /* best-effort; will retry next open */ }
 }
+function lotPickerModal(lots,current,onDone){
+  const sel=new Set(current);
+  const m=el(`<div><h3>${T('add_lot_day')}</h3>
+    <input id="lpf" placeholder="🔎" style="margin-bottom:10px"/>
+    <div id="lplist" class="stack" style="max-height:52vh;overflow:auto"></div>
+    <button class="btn gold big" id="lpok" style="margin-top:12px">${T('btn_save')}</button></div>`);
+  const back=openModal(m); const list=m.querySelector('#lplist');
+  const paintList=q=>{ list.innerHTML=''; (lots||[]).filter(l=>!q||(l.name||'').toLowerCase().includes(q.toLowerCase())).forEach(l=>{
+    const row=el(`<label class="row" style="gap:10px;background:var(--surface2);padding:10px;border-radius:10px;border:1px solid var(--line)"><input type="checkbox" style="width:18px;height:18px" ${sel.has(l.id)?'checked':''}/><span>${esc(l.name)}${l.region?' · '+esc(l.region):''}</span></label>`);
+    row.querySelector('input').onchange=e=>{ if(e.target.checked) sel.add(l.id); else sel.delete(l.id); };
+    list.appendChild(row); }); };
+  paintList(''); m.querySelector('#lpf').oninput=e=>paintList(e.target.value);
+  m.querySelector('#lpok').onclick=()=>{ back.remove(); onDone(sel); };
+}
 async function scheduleModal(empId){
   const [{data:emp},{data:lots},{data:tpls}]=await Promise.all([
     db.from('profiles').select('id,full_name,unavailable_until').eq('id',empId).single(),
@@ -752,11 +766,11 @@ async function scheduleModal(empId){
     back.remove(); toast(T('sched_deleted')); render(); };
   const paint=()=>{ dv.innerHTML=''; days.forEach(d=>{
     const card=el(`<div class="card" style="margin:0 0 10px"><div style="font-weight:800;margin-bottom:8px">${dayName(d)}</div><div class="chips"></div>
-      <select class="addlot" style="margin-top:8px"><option value="">＋ ${T('add_lot_day')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}${l.region?' · '+esc(l.region):''}</option>`).join('')}</select></div>`);
+      <button type="button" class="btn ghost addlot" style="margin-top:8px">＋ ${T('add_lot_day')}</button></div>`);
     const chips=card.querySelector('.chips');
     if(!sel[d].size) chips.innerHTML=`<span class="muted" style="font-size:12px">—</span>`;
     [...sel[d]].forEach(lid=>{ const chip=el(`<span class="pill s-blue" style="cursor:pointer;margin:0 6px 6px 0;display:inline-block">${esc(lotName(lid))} ✕</span>`); chip.onclick=()=>{ sel[d].delete(lid); paint(); }; chips.appendChild(chip); });
-    card.querySelector('.addlot').onchange=e=>{ if(e.target.value){ sel[d].add(e.target.value); paint(); } };
+    card.querySelector('.addlot').onclick=()=>lotPickerModal(lots,sel[d],ns=>{ sel[d]=ns; paint(); });
     dv.appendChild(card); }); };
   paint();
   m.querySelector('#sv').onclick=async(e)=>{ const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
@@ -997,7 +1011,7 @@ async function renderAssign(v){
     <div id="a_emps" class="stack" style="margin-top:10px">${(emps||[]).map(e=>`<label class="row between" style="gap:10px;background:var(--surface2);padding:12px;border-radius:12px;border:1px solid var(--line)"><span class="row" style="gap:10px"><input type="checkbox" class="a_ck" style="width:20px;height:20px" value="${e.id}"/> <span>${esc(e.full_name||T('role_employee'))}</span></span><button type="button" class="btn ghost a_lead" data-e="${e.id}" style="width:auto;padding:6px 10px;font-size:12px">👑 ${T('team_lead')}</button></label>`).join('')||`<div class="muted">${T('no_emps_add')}</div>`}</div>
     <div class="muted" style="font-size:13px;margin-top:14px">${T('assign_repeat')}</div>
     <div class="row" style="gap:6px;margin-top:8px" id="a_dows">${(DOW[LANG]||DOW.en).map((d,i)=>`<button type="button" class="btn ghost dow" data-d="${i}" style="padding:10px 0">${d}</button>`).join('')}</div>
-    <label class="field" style="margin-top:10px"><span>${T('weeks_ahead')}</span><input type="number" id="a_weeks" value="4" min="1" max="12"/></label>
+    <label class="field" style="margin-top:10px"><span>${T('weeks_ahead')}</span><input type="number" id="a_weeks" value="1" min="1" max="12"/></label>
     <button class="btn gold big" id="a_save" style="margin-top:6px">${T('btn_assign')}</button></div>
     <div style="margin:22px 2px 8px;font-weight:800;color:var(--gold)">📋 ${T('sched_section')}</div>
     <div class="muted" style="font-size:12px;margin:0 2px 8px">👑 ${T('sched_hint')}</div>
