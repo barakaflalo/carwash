@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.3';
+const APP_VERSION='1.4';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -199,6 +199,13 @@ const DICT={
  nav_reports:{he:'דוחות',en:'Reports',ru:'Отчёты',es:'Informes',ar:'التقارير'},
  nav_settings:{he:'הגדרות',en:'Settings',ru:'Настройки',es:'Ajustes',ar:'الإعدادات'},
  nav_myday:{he:'היום שלי',en:'My day',ru:'Мой день',es:'Mi día',ar:'يومي'},
+ nav_weekly:{he:'מעקב',en:'Weekly',ru:'Контроль',es:'Semanal',ar:'المتابعة'},
+ week_range:{he:'שבוע',en:'Week',ru:'Неделя',es:'Semana',ar:'الأسبوع'},
+ no_assign_week:{he:'מגרשים בלי שיבוץ השבוע',en:'Lots with no assignment this week',ru:'Площадки без назначения',es:'Sitios sin asignar esta semana',ar:'مواقع دون تعيين هذا الأسبوع'},
+ lot_unassigned:{he:'לא שובץ',en:'Not assigned',ru:'Не назначено',es:'Sin asignar',ar:'غير معيّن'},
+ st_inprogress:{he:'בתהליך',en:'In progress',ru:'В процессе',es:'En curso',ar:'قيد التنفيذ'},
+ scheduled_this_week:{he:'משובצים השבוע',en:'Scheduled this week',ru:'Назначены на неделю',es:'Asignados esta semana',ar:'المعيّنون هذا الأسبوع'},
+ assign_to_lot:{he:'שבץ למגרש זה',en:'Assign to this lot',ru:'Назначить на площадку',es:'Asignar a este sitio',ar:'تعيين لهذا الموقع'},
  role_owner:{he:'בעלים',en:'Owner',ru:'Владелец',es:'Propietario',ar:'المالك'},
  role_manager:{he:'מנהל',en:'Manager',ru:'Менеджер',es:'Gerente',ar:'مدير'},
  role_accountant:{he:'הנהלת חשבונות',en:'Accounting',ru:'Бухгалтерия',es:'Contabilidad',ar:'المحاسبة'},
@@ -657,7 +664,7 @@ async function logout(){ await db.auth.signOut(); localStorage.removeItem('cw_me
 function buildNav(){
   const nav=document.getElementById('nav');
   const items=isManager(ME.role)
-    ? [['dash','🗂️','nav_dash'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['emps','👥','nav_emps'],['reports','📊','nav_reports'],['settings','⚙️','nav_settings']]
+    ? [['dash','🗂️','nav_dash'],['weekly','🧽','nav_weekly'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['emps','👥','nav_emps'],['reports','📊','nav_reports'],['settings','⚙️','nav_settings']]
     : [['myday','📋','nav_myday'],['settings','⚙️','nav_settings']];
   nav.innerHTML='';
   items.forEach(([id,ic,k])=>{ const b=el(`<button data-id="${id}"><span class="ic">${ic}</span><span>${T(k)}</span></button>`);
@@ -671,6 +678,7 @@ async function render(){
   const v=document.getElementById('view'); v.innerHTML='<div class="empty"><span class="spin"></span></div>';
   try{
     if(CURRENT==='dash') await renderDash(v);
+    else if(CURRENT==='weekly') await renderWeekly(v);
     else if(CURRENT==='lots') await renderLots(v);
     else if(CURRENT==='assign') await renderAssign(v);
     else if(CURRENT==='emps') await renderEmps(v);
@@ -678,6 +686,51 @@ async function render(){
     else if(CURRENT==='myday') await renderMyDay(v);
     else if(CURRENT==='settings') renderSettings(v);
   }catch(e){ v.innerHTML=`<div class="empty">${T('loading_err')}<br><span class="muted">${esc(e.message||'')}</span></div>`; }
+}
+
+/* ================= MANAGER · WEEKLY TRACKER ================= */
+let WEEKLY_REGION='', ASSIGN_LOT='';
+function weekStartSat(){ const t=new Date(); t.setHours(0,0,0,0); const diff=(t.getDay()-6+7)%7; t.setDate(t.getDate()-diff); return t; } // most recent Saturday
+async function renderWeekly(v){
+  const ws=weekStartSat(), we=new Date(ws); we.setDate(ws.getDate()+6);
+  const from=ymd(ws), to=ymd(we);
+  const [{data:lots},{data:reports},{data:asgs}]=await Promise.all([
+    db.from('lots').select('id,name,region,lat,lng').is('deleted_at',null).order('name'),
+    db.from('lot_reports').select('lot_id').gte('work_date',from).lte('work_date',to),
+    db.from('assignments').select('lot_id,employee_id,work_date,is_lead,arrived_at').is('deleted_at',null).gte('work_date',from).lte('work_date',to)]);
+  const empMap=await employeeMap();
+  const reported=new Set((reports||[]).map(r=>r.lot_id));
+  const arrived=new Set((asgs||[]).filter(a=>a.arrived_at).map(a=>a.lot_id));
+  const assigned=new Set((asgs||[]).map(a=>a.lot_id));
+  const asgByLot={}; (asgs||[]).forEach(a=>{ (asgByLot[a.lot_id]=asgByLot[a.lot_id]||[]).push(a); });
+  const REG=[['',T('all_regions')],['north',T('r_north')],['haifa',T('r_haifa')],['sharon',T('r_sharon')],['center',T('r_center')],['jlm',T('r_jlm')],['south',T('r_south')],['__none__',T('region_none')]];
+  let all=(lots||[]); if(WEEKLY_REGION==='__none__') all=all.filter(l=>!l.region); else if(WEEKLY_REGION) all=all.filter(l=>l.region===WEEKLY_REGION);
+  const stat=id=> reported.has(id)?'green':(arrived.has(id)?'yellow':'red');
+  const g=all.filter(l=>stat(l.id)==='green').length, y=all.filter(l=>stat(l.id)==='yellow').length, r=all.filter(l=>stat(l.id)==='red').length;
+  const noAsg=all.filter(l=>!assigned.has(l.id));
+  v.innerHTML=`<h2 class="screen-title">${T('nav_weekly')}</h2>
+    <div class="card"><div class="muted" style="font-size:12px">${T('week_range')}: ${fmtDate(from)} – ${fmtDate(to)}</div>
+      <div class="row between" style="margin-top:8px"><span style="font-weight:800">${T('lots_total')}: ${all.length}</span>
+        <span class="row" style="gap:6px"><span class="pill s-green">${g}</span><span class="pill s-amber">${y}</span><span class="pill s-red">${r}</span></span></div></div>
+    <label class="field"><span>${T('f_region')}</span><select id="wreg">${REG.map(([val,lab])=>`<option value="${val}" ${WEEKLY_REGION===val?'selected':''}>${lab}</option>`).join('')}</select></label>
+    ${noAsg.length?`<div class="card" style="border-color:rgba(239,68,68,.5)"><div style="font-weight:800;color:var(--red);margin-bottom:8px">⚠ ${T('no_assign_week')} (${noAsg.length})</div><div id="noAsgList" class="stack"></div></div>`:''}
+    <div id="wkList" class="stack" style="margin-top:6px"></div>`;
+  v.querySelector('#wreg').onchange=e=>{ WEEKLY_REGION=e.target.value; render(); };
+  const mkLotRow=(l,extraBorder)=>{ const [cls,txt]=stat(l.id)==='green'?['s-green',T('st_done')]:stat(l.id)==='yellow'?['s-amber',T('st_inprogress')]:['s-red',T('st_notdone')];
+    const c=el(`<div class="card row between" style="margin:0${extraBorder?';border-color:rgba(239,68,68,.3)':''};cursor:pointer"><span>${esc(l.name)} <span class="muted" style="font-size:12px">${l.region?esc(l.region):''}</span></span><span class="pill ${cls}">${txt}</span></div>`);
+    c.onclick=()=>weeklyLotModal(l,asgByLot[l.id]||[],empMap); return c; };
+  if(noAsg.length){ const nw=v.querySelector('#noAsgList'); noAsg.forEach(l=>nw.appendChild(mkLotRow(l,true))); }
+  const wl=v.querySelector('#wkList'); all.forEach(l=>wl.appendChild(mkLotRow(l,false)));
+}
+function weeklyLotModal(lot,asgs,empMap){
+  const m=el(`<div><h3>${esc(lot.name)}</h3><div class="muted" style="font-size:12px;margin-bottom:12px">${lot.region?esc(lot.region):T('region_none')}</div>
+    <div style="font-weight:800;margin-bottom:8px">${T('scheduled_this_week')}</div><div class="stack" id="wsched"></div>
+    <button class="btn gold" id="wassign" style="margin-top:12px">🗓️ ${T('assign_to_lot')}</button></div>`);
+  const back=openModal(m); const sc=m.querySelector('#wsched');
+  if(!asgs.length){ sc.innerHTML=`<div class="muted">${T('lot_unassigned')}</div>`; }
+  else { const byDate={}; asgs.forEach(a=>{ (byDate[a.work_date]=byDate[a.work_date]||[]).push(a); });
+    Object.keys(byDate).sort().forEach(dt=>{ sc.appendChild(el(`<div class="card" style="margin:0"><div class="muted" style="font-size:12px;margin-bottom:4px">${fmtDate(dt)}</div>${byDate[dt].map(a=>`<div>${a.is_lead?'👑 ':''}${esc(empMap[a.employee_id]||T('role_employee'))}${a.arrived_at?' · ✓':''}</div>`).join('')}</div>`)); }); }
+  m.querySelector('#wassign').onclick=()=>{ back.remove(); ASSIGN_LOT=lot.id; CURRENT='assign'; render(); };
 }
 
 /* ================= MANAGER · DASHBOARD ================= */
@@ -859,6 +912,7 @@ async function renderAssign(v){
     <label class="field" style="margin-top:10px"><span>${T('weeks_ahead')}</span><input type="number" id="a_weeks" value="4" min="1" max="12"/></label>
     <button class="btn gold big" id="a_save" style="margin-top:6px">${T('btn_assign')}</button></div>`;
   v.querySelectorAll('.dow').forEach(b=>b.onclick=()=>b.classList.toggle('gold'));
+  if(ASSIGN_LOT){ const sel=v.querySelector('#a_lot'); if(sel) sel.value=ASSIGN_LOT; ASSIGN_LOT=''; }
   let leadId=null;
   v.querySelectorAll('.a_lead').forEach(b=>b.onclick=()=>{ leadId=(leadId===b.dataset.e)?null:b.dataset.e;
     v.querySelectorAll('.a_lead').forEach(x=>x.classList.toggle('gold',x.dataset.e===leadId)); });
