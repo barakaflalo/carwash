@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.2';
+const APP_VERSION='1.3';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -421,7 +421,9 @@ const DICT={
  restore_confirm:{he:'לשחזר מהקובץ? מגרשים ועובדים מהגיבוי יתווספו/יעודכנו. קיימים לא יימחקו.',en:'Restore from file? Lots and workers from the backup are added/updated. Existing data is kept.',ru:'Восстановить из файла? Площадки и работники добавятся/обновятся.',es:'¿Restaurar? Se añaden/actualizan sitios y trabajadores.',ar:'استعادة من الملف؟ تُضاف/تُحدَّث المواقع والعمال.'},
  restoring:{he:'משחזר…',en:'Restoring…',ru:'Восстановление…',es:'Restaurando…',ar:'جارٍ الاستعادة…'},
  restore_done:{he:'השחזור הושלם',en:'Restore complete',ru:'Восстановление завершено',es:'Restauración completa',ar:'اكتملت الاستعادة'},
- restore_bad:{he:'קובץ גיבוי לא תקין',en:'Invalid backup file',ru:'Неверный файл',es:'Archivo no válido',ar:'ملف غير صالح'}
+ restore_bad:{he:'קובץ גיבוי לא תקין',en:'Invalid backup file',ru:'Неверный файл',es:'Archivo no válido',ar:'ملف غير صالح'},
+ set_lot_loc:{he:'קבע מיקום המגרש מהמכשיר',en:'Set lot location from device',ru:'Задать точку по устройству',es:'Fijar ubicación desde el dispositivo',ar:'تعيين موقع الموقع من الجهاز'},
+ toast_loc_saved:{he:'מיקום המגרש נשמר',en:'Lot location saved',ru:'Точка сохранена',es:'Ubicación guardada',ar:'تم حفظ الموقع'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 let LANG=localStorage.getItem('cw_lang')||'he';
@@ -496,6 +498,14 @@ async function geocode(address){ // free OpenStreetMap geocoding, best-effort, I
   }catch(e){}
   return null;
 }
+async function revGeocode(lat,lng){ // point -> address, best-effort (may fail silently)
+  try{
+    const u=`https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${lat}&lon=${lng}`;
+    const r=await fetch(u,{headers:{'Accept':'application/json'}}); const j=await r.json();
+    if(j&&j.display_name) return j.display_name;
+  }catch(e){}
+  return null;
+}
 function fmtTime(ts){ if(!ts) return ''; return new Date(ts).toLocaleTimeString(LANG==='he'?'he-IL':LANG,{hour:'2-digit',minute:'2-digit'}); }
 function isManager(r){ return ['owner','manager','accountant'].includes(r); }
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
@@ -550,6 +560,10 @@ async function processRecord(r){
     if(error) throw error;
   } else if(r.type==='endshift'){
     const {error}=await db.from('assignments').update({finished_at:r.finished_at,finished_lat:r.lat,finished_lng:r.lng}).eq('id',r.assignment_id);
+    if(error) throw error;
+  } else if(r.type==='setloc'){
+    const patch={lat:r.lat,lng:r.lng}; if(r.address) patch.address=r.address;
+    const {error}=await db.from('lots').update(patch).eq('id',r.lot_id);
     if(error) throw error;
   } else if(r.type==='finish'){
     if(r.photoBlob){ const up=await db.storage.from('documents').upload(r.path,r.photoBlob,{contentType:'image/jpeg',upsert:true}); if(up.error) throw up.error;
@@ -1106,6 +1120,7 @@ function jobModal(a,isToday){
       ${finished?`<button class="btn ghost big" disabled>✓ ${T('finished_at')}${fmtTime(a.finished_at)}</button>`:`
         <button class="btn ${canAct?'gold':'ghost'} big" id="report" ${canAct?'':'disabled'}>📸 ${lead?T('photo_report'):T('report_now')}</button>
         ${!lead?`<button class="btn big" id="endshift" ${canAct?'':'disabled'}>🏁 ${T('end_shift')}</button>`:''}`}
+      ${(isToday&&!(lot.lat&&lot.lng))?`<button class="btn ghost big" id="setloc">📍 ${T('set_lot_loc')}</button>`:''}
     </div></div>`);
   const back=openModal(m);
   m.querySelector('#nav').onclick=()=>window.open(navUrl(lot),'_blank');
@@ -1119,6 +1134,12 @@ function jobModal(a,isToday){
     const g=await getGPS(); const rec={type:'endshift',assignment_id:a.id,finished_at:new Date().toISOString(),lat:g?.lat,lng:g?.lng};
     try{ const res=await submitAction(rec); toast(res==='queued'?T('toast_offline_saved'):T('toast_sent')); back.remove(); render(); }
     catch(err){ toast(T('err_generic')+(err.message||'')); btn.disabled=false; btn.textContent='🏁 '+T('end_shift'); } };
+  const slb=m.querySelector('#setloc'); if(slb) slb.onclick=async(e)=>{ const btn=e.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('reading_loc');
+    const g=await getGPS(); if(!g){ toast('GPS ✕'); btn.disabled=false; btn.textContent='📍 '+T('set_lot_loc'); return; }
+    let addr=null; try{ addr=await revGeocode(g.lat,g.lng); }catch(_){}
+    const rec={type:'setloc',lot_id:a.lot_id,lat:g.lat,lng:g.lng}; if(addr) rec.address=addr;
+    try{ const res=await submitAction(rec); toast(res==='queued'?T('toast_offline_saved'):T('toast_loc_saved')); back.remove(); render(); }
+    catch(err){ toast(T('err_generic')+(err.message||'')); btn.disabled=false; btn.textContent='📍 '+T('set_lot_loc'); } };
 }
 function finishForm(a){
   const f=el(`<div><h3>${T('finish_title')} · ${esc(a.lots?.name||'')}</h3>
