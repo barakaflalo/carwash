@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org; font-src 'self'; object-src 'none'; base-uri 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org; font-src 'self'; object-src 'none'; base-uri 'none'" />
 <meta name="theme-color" content="#0a0a0b" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.9';
+const APP_VERSION='2.0';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -449,7 +449,17 @@ const DICT={
  photo_deleted:{he:'התמונה נמחקה',en:'Photo deleted',ru:'Фото удалено',es:'Foto eliminada',ar:'حُذفت الصورة'},
  del_photo_confirm:{he:'למחוק את התמונה?',en:'Delete this photo?',ru:'Удалить фото?',es:'¿Eliminar la foto?',ar:'حذف الصورة؟'},
  no_photos:{he:'אין תמונות',en:'No photos',ru:'Нет фото',es:'Sin fotos',ar:'لا صور'},
- no_report:{he:'אין דיווח',en:'No report',ru:'Нет отчёта',es:'Sin informe',ar:'لا تقرير'}
+ no_report:{he:'אין דיווח',en:'No report',ru:'Нет отчёта',es:'Sin informe',ar:'لا تقرير'},
+ nav_chat:{he:'הערות',en:'Notes',ru:'Заметки',es:'Notas',ar:'ملاحظات'},
+ chat_title:{he:'הערות למנהל',en:'Notes to manager',ru:'Заметки менеджеру',es:'Notas al gerente',ar:'ملاحظات للمدير'},
+ chat_pick:{he:'בחר עובד לצפייה בשיחה',en:'Pick a worker to view the chat',ru:'Выберите работника',es:'Elige un trabajador',ar:'اختر عاملًا لعرض المحادثة'},
+ chat_empty:{he:'אין הודעות עדיין.',en:'No messages yet.',ru:'Сообщений пока нет.',es:'Aún no hay mensajes.',ar:'لا رسائل بعد.'},
+ msg_ph:{he:'כתוב הודעה…',en:'Type a message…',ru:'Сообщение…',es:'Escribe…',ar:'اكتب رسالة…'},
+ chat_purge_note:{he:'ℹ️ קבצים (תמונה/וידאו/קול) נמחקים אחרי שבוע — הורידו מה שחשוב',en:'ℹ️ Media (photo/video/voice) is deleted after a week — download what matters',ru:'ℹ️ Медиа удаляется через неделю',es:'ℹ️ El contenido se borra tras una semana',ar:'ℹ️ تُحذف الوسائط بعد أسبوع'},
+ media_gone:{he:'הקובץ נמחק אחרי שבוע',en:'File deleted after a week',ru:'Файл удалён',es:'Archivo eliminado',ar:'حُذف الملف'},
+ rec_start:{he:'🎤 הקלטה',en:'🎤 Record',ru:'🎤 Запись',es:'🎤 Grabar',ar:'🎤 تسجيل'},
+ rec_stop:{he:'⏹ עצור ושלח',en:'⏹ Stop & send',ru:'⏹ Стоп',es:'⏹ Parar',ar:'⏹ إيقاف'},
+ badge_new:{he:'חדש',en:'new',ru:'новое',es:'nuevo',ar:'جديد'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 const DOWF={he:['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],en:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],ru:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'],es:['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],ar:['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']};
@@ -668,6 +678,7 @@ function afterUnlock(){
   document.getElementById('app').classList.remove('hidden');
   buildNav(); CURRENT=isManager(ME.role)?'dash':'myday'; render(); flushQueue(true); maybeOnboard();
   if(isManager(ME.role)) generateFromTemplates(false);
+  if(isManager(ME.role)) purgeChatMedia();
 }
 function showLockThen(cb){
   document.getElementById('loginScreen').classList.add('hidden');
@@ -686,21 +697,23 @@ async function logout(){ await db.auth.signOut(); localStorage.removeItem('cw_me
 function buildNav(){
   const nav=document.getElementById('nav');
   const items=isManager(ME.role)
-    ? [['dash','🗂️','nav_dash'],['weekly','🧽','nav_weekly'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['emps','👥','nav_emps'],['reports','📊','nav_reports'],['myday','📋','nav_myday'],['settings','⚙️','nav_settings']]
-    : [['myday','📋','nav_myday'],['settings','⚙️','nav_settings']];
+    ? [['dash','🗂️','nav_dash'],['weekly','🧽','nav_weekly'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['emps','👥','nav_emps'],['reports','📊','nav_reports'],['chat','💬','nav_chat'],['myday','📋','nav_myday'],['settings','⚙️','nav_settings']]
+    : [['myday','📋','nav_myday'],['chat','💬','nav_chat'],['settings','⚙️','nav_settings']];
   nav.innerHTML='';
   items.forEach(([id,ic,k])=>{ const b=el(`<button data-id="${id}"><span class="ic">${ic}</span><span>${T(k)}</span></button>`);
-    b.onclick=()=>{ CURRENT=id; render(); }; nav.appendChild(b); });
+    b.onclick=()=>{ CHAT_WORKER=null; CURRENT=id; render(); }; nav.appendChild(b); });
 }
 function markNav(){ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.id===CURRENT)); }
 
 /* ================= RENDER ROUTER ================= */
 async function render(){
   markNav();
+  if(CHAT_TIMER){ clearInterval(CHAT_TIMER); CHAT_TIMER=null; }
   const v=document.getElementById('view'); v.innerHTML='<div class="empty"><span class="spin"></span></div>';
   try{
     if(CURRENT==='dash') await renderDash(v);
     else if(CURRENT==='weekly') await renderWeekly(v);
+    else if(CURRENT==='chat'){ if(isManager(ME.role)&&!CHAT_WORKER) await renderChatList(v); else await renderChat(v,isManager(ME.role)?CHAT_WORKER:ME.id); }
     else if(CURRENT==='lots') await renderLots(v);
     else if(CURRENT==='assign') await renderAssign(v);
     else if(CURRENT==='emps') await renderEmps(v);
@@ -796,6 +809,109 @@ async function scheduleModal(empId){
     }catch(err){ toast(T('err_generic')+(err.message||'')); b.disabled=false; b.textContent=T('btn_save'); return; }
     back.remove(); toast(T('sched_saved')); render();
   };
+}
+
+/* ================= CHAT · "הערות למנהל" ================= */
+let CHAT_WORKER=null, CHAT_TIMER=null, CHAT_REC=null;
+function chatMediaUrl(path){ return db.storage.from('chat').getPublicUrl(path).data.publicUrl; }
+async function markRead(workerId){ try{ await db.from('message_reads').upsert({user_id:ME.id,worker_id:workerId,last_read:new Date().toISOString()},{onConflict:'user_id,worker_id'}); }catch(_){} }
+async function sendMessage(workerId,kind,body,blob,ext){
+  let media_path=null;
+  if(blob){ media_path=`${workerId}/${Date.now()}.${ext}`; const up=await db.storage.from('chat').upload(media_path,blob,{upsert:true,contentType:blob.type||undefined}); if(up.error){ toast(T('err_generic')+up.error.message); return false; } }
+  const {error}=await db.from('messages').insert({worker_id:workerId,sender_id:ME.id,kind,body:body||null,media_path});
+  if(error){ toast(T('err_generic')+error.message); return false; } return true;
+}
+async function renderChatList(v){
+  const [{data:workers},{data:reads},{data:msgs}]=await Promise.all([
+    db.from('profiles').select('id,full_name,username').eq('role','employee').is('archived_at',null).order('full_name'),
+    db.from('message_reads').select('worker_id,last_read').eq('user_id',ME.id),
+    db.from('messages').select('worker_id,sender_id,created_at').order('created_at',{ascending:false}).limit(1000)]);
+  const lastRead={}; (reads||[]).forEach(r=>lastRead[r.worker_id]=r.last_read);
+  const latest={}, unread={};
+  (msgs||[]).forEach(m=>{ if(!latest[m.worker_id]) latest[m.worker_id]=m.created_at;
+    if(m.sender_id!==ME.id && (!lastRead[m.worker_id]||m.created_at>lastRead[m.worker_id])) unread[m.worker_id]=(unread[m.worker_id]||0)+1; });
+  v.innerHTML=`<h2 class="screen-title">${T('chat_title')}</h2><div class="muted" style="font-size:12px;margin:0 2px 10px">${T('chat_pick')}</div><div id="clist" class="stack"></div>`;
+  const wrap=v.querySelector('#clist');
+  if(!workers||!workers.length){ wrap.innerHTML=`<div class="empty">${T('emps_empty')}</div>`; return; }
+  workers.sort((a,b)=>(unread[b.id]||0)-(unread[a.id]||0)||(latest[b.id]||'').localeCompare(latest[a.id]||''));
+  workers.forEach(w=>{ const c=el(`<div class="card row between" style="margin:0;cursor:pointer"><span>💬 ${esc(w.full_name||w.username||'')}</span>${unread[w.id]?`<span class="pill s-red">${unread[w.id]} ${T('badge_new')}</span>`:''}</div>`);
+    c.onclick=()=>{ CHAT_WORKER=w.id; render(); }; wrap.appendChild(c); });
+}
+async function renderChat(v,workerId){
+  const [{data:msgs},{data:prof}]=await Promise.all([
+    db.from('messages').select('*').eq('worker_id',workerId).order('created_at'),
+    db.from('profiles').select('full_name,username').eq('id',workerId).single()]);
+  const mgr=isManager(ME.role);
+  const title=mgr?(prof?.full_name||prof?.username||T('chat_title')):T('chat_title');
+  v.innerHTML=`<div class="row between" style="margin-bottom:8px">
+      ${mgr?`<button class="btn ghost" style="width:auto;padding:6px 12px" id="cback">→</button>`:'<span></span>'}
+      <h2 class="screen-title" style="margin:0">${esc(title)}</h2></div>
+    <div class="muted" style="font-size:11px;margin:0 2px 8px">${T('chat_purge_note')}</div>
+    <div id="cmsgs" class="stack" style="max-height:58vh;overflow:auto;padding:4px"></div>
+    <div class="card" style="margin-top:10px;position:sticky;bottom:0">
+      <div class="row" style="gap:6px"><input id="cinput" placeholder="${T('msg_ph')}" style="flex:1"/><button class="btn gold" style="width:auto" id="csend">▲</button></div>
+      <div class="row" style="gap:6px;margin-top:8px">
+        <button class="btn ghost" style="flex:1;padding:8px" id="cphoto">📷</button>
+        <button class="btn ghost" style="flex:1;padding:8px" id="cvideo">🎬</button>
+        <button class="btn ghost" style="flex:1;padding:8px" id="cvoice">${T('rec_start')}</button>
+      </div>
+      <input type="file" id="cfphoto" accept="image/*" capture="environment" style="display:none"/>
+      <input type="file" id="cfvideo" accept="video/*" capture="environment" style="display:none"/>
+    </div>`;
+  if(mgr) v.querySelector('#cback').onclick=()=>{ CHAT_WORKER=null; render(); };
+  const box=v.querySelector('#cmsgs');
+  const paint=(list)=>{ box.innerHTML=''; if(!list.length){ box.innerHTML=`<div class="muted" style="text-align:center;padding:20px">${T('chat_empty')}</div>`; return; }
+    list.forEach(m=>{ const mine=m.sender_id===ME.id;
+      const b=el(`<div style="align-self:${mine?'flex-start':'flex-end'};max-width:82%;background:${mine?'var(--gold-soft)':'var(--surface2)'};color:${mine?'#1a1200':'var(--text)'};border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin:0 0 8px"></div>`);
+      let inner='';
+      if(m.media_path){ const url=chatMediaUrl(m.media_path);
+        if(m.kind==='image') inner+=`<img src="${url}" style="max-width:100%;border-radius:8px;display:block"/>`;
+        else if(m.kind==='video') inner+=`<video src="${url}" controls playsinline style="max-width:100%;border-radius:8px;display:block"></video>`;
+        else if(m.kind==='voice') inner+=`<audio src="${url}" controls style="max-width:210px;display:block"></audio>`;
+        inner+=`<a href="${url}" download class="muted" style="font-size:11px;display:inline-block;margin-top:4px">⤓ ${T('btn_download')}</a>`;
+      } else if(m.kind!=='text'){ inner+=`<span class="muted" style="font-size:12px">🗑️ ${T('media_gone')}</span>`; }
+      if(m.body) inner+=`<div style="margin-top:${m.media_path?'6px':'0'};white-space:pre-wrap">${esc(m.body)}</div>`;
+      inner+=`<div class="muted" style="font-size:10px;margin-top:4px">${fmtTime(m.created_at)}</div>`;
+      b.innerHTML=inner; box.appendChild(b); });
+    box.scrollTop=box.scrollHeight;
+  };
+  box.style.display='flex'; box.style.flexDirection='column';
+  paint(msgs||[]); markRead(workerId);
+  const reload=async()=>{ const {data}=await db.from('messages').select('*').eq('worker_id',workerId).order('created_at'); paint(data||[]); markRead(workerId); };
+  const inp=v.querySelector('#cinput');
+  const doSend=async()=>{ const t=inp.value.trim(); if(!t) return; inp.value=''; if(await sendMessage(workerId,'text',t)) reload(); };
+  v.querySelector('#csend').onclick=doSend; inp.onkeydown=e=>{ if(e.key==='Enter') doSend(); };
+  const fileSend=(inputEl,kind)=>{ inputEl.onchange=async e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return;
+    toast(T('sending')); let blob=f, ext=(f.name.split('.').pop()||(kind==='image'?'jpg':'mp4')).toLowerCase();
+    if(kind==='image'){ try{ blob=await compressImage(f); ext='jpg'; }catch(_){} }
+    if(await sendMessage(workerId,kind,inp.value.trim()||null,blob,ext)){ inp.value=''; reload(); } e.target.value=''; }; };
+  fileSend(v.querySelector('#cfphoto'),'image'); fileSend(v.querySelector('#cfvideo'),'video');
+  v.querySelector('#cphoto').onclick=()=>v.querySelector('#cfphoto').click();
+  v.querySelector('#cvideo').onclick=()=>v.querySelector('#cfvideo').click();
+  const voiceBtn=v.querySelector('#cvoice');
+  voiceBtn.onclick=async()=>{
+    if(CHAT_REC){ CHAT_REC.stop(); return; }
+    if(!navigator.mediaDevices||!window.MediaRecorder){ toast('🎤 ✕'); return; }
+    try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const rec=new MediaRecorder(stream); const chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+      rec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); CHAT_REC=null; voiceBtn.textContent=T('rec_start'); voiceBtn.classList.remove('danger');
+        const blob=new Blob(chunks,{type:'audio/webm'}); toast(T('sending'));
+        if(await sendMessage(workerId,'voice',inp.value.trim()||null,blob,'webm')){ inp.value=''; reload(); } };
+      rec.start(); CHAT_REC=rec; voiceBtn.textContent=T('rec_stop'); voiceBtn.classList.add('danger');
+    }catch(e){ toast('🎤 ✕'); }
+  };
+  CHAT_TIMER=setInterval(reload,5000);
+}
+async function purgeChatMedia(){
+  if(!isManager(ME.role)) return;
+  const wk=ymd(weekStartSat()); if(localStorage.getItem('cw_chatpurge_last')===wk) return;
+  const cutoff=new Date(Date.now()-7*864e5).toISOString();
+  try{ const {data:old}=await db.from('messages').select('id,media_path').not('media_path','is',null).lt('created_at',cutoff);
+    if(old&&old.length){ const paths=old.map(m=>m.media_path);
+      for(let i=0;i<paths.length;i+=100){ try{ await db.storage.from('chat').remove(paths.slice(i,i+100)); }catch(_){} }
+      for(let i=0;i<old.length;i+=100){ await db.from('messages').update({media_path:null}).in('id',old.slice(i,i+100).map(m=>m.id)); } }
+    localStorage.setItem('cw_chatpurge_last',wk);
+  }catch(e){}
 }
 
 /* ================= MANAGER · WEEKLY TRACKER ================= */
