@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='2.2';
+const APP_VERSION='2.3';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -485,7 +485,10 @@ const DICT={
  pick_date:{he:'בחר תאריך',en:'Pick a date',ru:'Выберите дату',es:'Elige fecha',ar:'اختر التاريخ'},
  pick_month:{he:'בחר חודש',en:'Pick a month',ru:'Выберите месяц',es:'Elige mes',ar:'اختر الشهر'},
  building_xlsx:{he:'בונה קובץ…',en:'Building file…',ru:'Создание файла…',es:'Creando archivo…',ar:'جارٍ الإنشاء…'},
- no_data_day:{he:'אין רכבים ליום זה',en:'No cars for this day',ru:'Нет машин',es:'Sin autos',ar:'لا سيارات'}
+ no_data_day:{he:'אין רכבים ליום זה',en:'No cars for this day',ru:'Нет машин',es:'Sin autos',ar:'لا سيارات'},
+ upload_names:{he:'🌐 העלאת שמות מגרשים בשפות',en:'🌐 Upload lot names (languages)',ru:'🌐 Загрузить названия (языки)',es:'🌐 Subir nombres (idiomas)',ar:'🌐 رفع أسماء المواقع (لغات)'},
+ names_loaded:{he:'השמות בשפות נטענו',en:'Language names loaded',ru:'Названия загружены',es:'Nombres cargados',ar:'تم تحميل الأسماء'},
+ names_bad:{he:'קובץ שמות לא תקין',en:'Invalid names file',ru:'Неверный файл',es:'Archivo no válido',ar:'ملف غير صالح'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 const DOWF={he:['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],en:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],ru:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'],es:['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],ar:['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']};
@@ -578,6 +581,7 @@ function isManager(r){ return ['owner','manager','accountant'].includes(r); }
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function lnm(o){ if(!o) return ''; return o['name_'+LANG]||o.name||''; }
 function shiftDate(s,n){ const[y,m,d]=s.split('-').map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return ymd(dt); }
 
 function getGPS(){ return new Promise(res=>{
@@ -789,7 +793,7 @@ function lotPickerModal(lots,current,onDone){
     <button class="btn gold big" id="lpok" style="margin-top:12px">${T('btn_save')}</button></div>`);
   const back=openModal(m); const list=m.querySelector('#lplist');
   const paintList=q=>{ list.innerHTML=''; (lots||[]).filter(l=>!q||(l.name||'').toLowerCase().includes(q.toLowerCase())).forEach(l=>{
-    const row=el(`<label class="row" style="gap:10px;background:var(--surface2);padding:10px;border-radius:10px;border:1px solid var(--line)"><input type="checkbox" style="width:18px;height:18px" ${sel.has(l.id)?'checked':''}/><span>${esc(l.name)}${l.region?' · '+esc(l.region):''}</span></label>`);
+    const row=el(`<label class="row" style="gap:10px;background:var(--surface2);padding:10px;border-radius:10px;border:1px solid var(--line)"><input type="checkbox" style="width:18px;height:18px" ${sel.has(l.id)?'checked':''}/><span>${esc(lnm(l))}${l.region?' · '+esc(l.region):''}</span></label>`);
     row.querySelector('input').onchange=e=>{ if(e.target.checked) sel.add(l.id); else sel.delete(l.id); };
     list.appendChild(row); }); };
   paintList(''); m.querySelector('#lpf').oninput=e=>paintList(e.target.value);
@@ -798,11 +802,11 @@ function lotPickerModal(lots,current,onDone){
 async function scheduleModal(empId){
   const [{data:emp},{data:lots},{data:tpls}]=await Promise.all([
     db.from('profiles').select('id,full_name,unavailable_until').eq('id',empId).single(),
-    db.from('lots').select('id,name,region').is('deleted_at',null).order('name'),
+    db.from('lots').select('id,name,name_en,name_ru,name_es,name_ar,region').is('deleted_at',null).order('name'),
     db.from('schedule_templates').select('id,weekday,lot_id').eq('employee_id',empId)]);
   const days=[0,1,2,3,4,5]; const sel={}; days.forEach(d=>sel[d]=new Set());
   (tpls||[]).forEach(t=>{ if(sel[t.weekday]) sel[t.weekday].add(t.lot_id); });
-  const lotName=id=>((lots||[]).find(l=>l.id===id)||{}).name||'';
+  const lotName=id=>lnm((lots||[]).find(l=>l.id===id)||{});
   const m=el(`<div><h3>${T('perm_schedule')} · ${esc(emp.full_name||'')}</h3>
     <div class="muted" style="font-size:12px;margin-bottom:12px">👑 ${T('sched_hint')}</div>
     <label class="field"><span>${T('unavailable_until')}</span><input type="date" id="unav" value="${emp.unavailable_until||''}"/></label>
@@ -960,7 +964,7 @@ async function renderWeekly(v){
   const ws=weekStartSat(), we=new Date(ws); we.setDate(ws.getDate()+6);
   const from=ymd(ws), to=ymd(we);
   const [{data:lots},{data:reports},{data:asgs}]=await Promise.all([
-    db.from('lots').select('id,name,region,lat,lng').is('deleted_at',null).order('name'),
+    db.from('lots').select('id,name,name_en,name_ru,name_es,name_ar,region,lat,lng').is('deleted_at',null).order('name'),
     db.from('lot_reports').select('lot_id').gte('work_date',from).lte('work_date',to),
     db.from('assignments').select('lot_id,employee_id,work_date,is_lead,arrived_at').is('deleted_at',null).gte('work_date',from).lte('work_date',to)]);
   const empMap=await employeeMap();
@@ -982,13 +986,13 @@ async function renderWeekly(v){
     <div id="wkList" class="stack" style="margin-top:6px"></div>`;
   v.querySelector('#wreg').onchange=e=>{ WEEKLY_REGION=e.target.value; render(); };
   const mkLotRow=(l,extraBorder)=>{ const [cls,txt]=stat(l.id)==='green'?['s-green',T('st_done')]:stat(l.id)==='yellow'?['s-amber',T('st_inprogress')]:['s-red',T('st_notdone')];
-    const c=el(`<div class="card row between" style="margin:0${extraBorder?';border-color:rgba(239,68,68,.3)':''};cursor:pointer"><span>${esc(l.name)} <span class="muted" style="font-size:12px">${l.region?esc(l.region):''}</span></span><span class="pill ${cls}">${txt}</span></div>`);
+    const c=el(`<div class="card row between" style="margin:0${extraBorder?';border-color:rgba(239,68,68,.3)':''};cursor:pointer"><span>${esc(lnm(l))} <span class="muted" style="font-size:12px">${l.region?esc(l.region):''}</span></span><span class="pill ${cls}">${txt}</span></div>`);
     c.onclick=()=>weeklyLotModal(l,asgByLot[l.id]||[],empMap); return c; };
   if(noAsg.length){ const nw=v.querySelector('#noAsgList'); noAsg.forEach(l=>nw.appendChild(mkLotRow(l,true))); }
   const wl=v.querySelector('#wkList'); all.forEach(l=>wl.appendChild(mkLotRow(l,false)));
 }
 function weeklyLotModal(lot,asgs,empMap){
-  const m=el(`<div><h3>${esc(lot.name)}</h3><div class="muted" style="font-size:12px;margin-bottom:12px">${lot.region?esc(lot.region):T('region_none')}</div>
+  const m=el(`<div><h3>${esc(lnm(lot))}</h3><div class="muted" style="font-size:12px;margin-bottom:12px">${lot.region?esc(lot.region):T('region_none')}</div>
     <div style="font-weight:800;margin-bottom:8px">${T('scheduled_this_week')}</div><div class="stack" id="wsched"></div>
     <button class="btn gold" id="wassign" style="margin-top:12px">🗓️ ${T('assign_to_lot')}</button></div>`);
   const back=openModal(m); const sc=m.querySelector('#wsched');
@@ -1002,7 +1006,7 @@ function weeklyLotModal(lot,asgs,empMap){
 let DASH_FROM=todayStr(), DASH_TO=todayStr(), DASH_REGION='';
 async function renderDash(v){
   const [{data:asgs},{data:reports},{data:docs}]=await Promise.all([
-    db.from('assignments').select('*, lots(name,address,region,lat,lng)').is('deleted_at',null).gte('work_date',DASH_FROM).lte('work_date',DASH_TO).order('work_date').order('created_at'),
+    db.from('assignments').select('*, lots(name,name_en,name_ru,name_es,name_ar,address,region,lat,lng)').is('deleted_at',null).gte('work_date',DASH_FROM).lte('work_date',DASH_TO).order('work_date').order('created_at'),
     db.from('lot_reports').select('*').gte('work_date',DASH_FROM).lte('work_date',DASH_TO),
     db.from('lot_documents').select('*').gte('work_date',DASH_FROM).lte('work_date',DASH_TO)]);
   const empMap=await employeeMap();
@@ -1039,7 +1043,7 @@ async function renderDash(v){
       const dayDocs=docsBy[lotId+'|'+dt]||[]; const [lcls,ltxt]=lotStatus(!!rep, dt<todayStr());
       const leadId=(lrows.find(a=>a.is_lead)||{}).employee_id;
       const c=el('<div class="card"></div>');
-      c.innerHTML=`<div class="row between"><h3 style="margin:0">${esc(lot?.name||'')}</h3><span class="row" style="gap:8px"><span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span><span class="pill ${lcls}">${ltxt}</span></span></div>
+      c.innerHTML=`<div class="row between"><h3 style="margin:0">${esc(lnm(lot))}</h3><span class="row" style="gap:8px"><span class="muted" style="font-size:12px">${esc(lot?.region||'')}</span><span class="pill ${lcls}">${ltxt}</span></span></div>
         <div class="row between" style="margin-top:6px"><span class="muted" style="font-size:12px">👑 ${T('team_lead')}: ${esc(empMap[leadId]||'—')}</span><button class="btn ghost" style="width:auto;padding:4px 10px" data-setlead="1">✎</button></div>
         <div class="stack" style="margin-top:8px">
           ${lrows.map(a=>{ const[cls,txt]=statusOf(a);
@@ -1150,7 +1154,7 @@ async function renderLots(v){
   v.querySelector('#lreg').onchange=e=>{ LOTS_REGION=e.target.value; render(); };
   const wrap=v.querySelector('#lotCards');
   if(!show.length){ wrap.innerHTML=`<div class="empty">${T('lots_empty')}</div>`; return; }
-  show.forEach(l=>{ const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l.name)}</h3>
+  show.forEach(l=>{ const c=el(`<div class="card"><div class="row between"><h3 style="margin:0">${esc(lnm(l))}</h3>
     <span class="muted" style="font-size:12px">${l.lat&&l.lng?'📍 ':''}${l.region?esc(l.region):'⚠ '+T('region_none')}</span></div>
     <div class="muted" style="font-size:13px;margin-top:4px">${esc(l.client_name||'')} ${l.address?'· '+esc(l.address):''}</div></div>`);
     c.style.cursor='pointer'; c.onclick=()=>lotForm(l); wrap.appendChild(c); });
@@ -1195,7 +1199,7 @@ async function renderAssign(v){
   const [{data:lots},emps]=await Promise.all([db.from('lots').select('*').eq('active',true).is('deleted_at',null).order('name'),assignableList()]);
   v.innerHTML=`<h2 class="screen-title">${T('assign_title')}</h2><div class="card">
     <label class="field"><span>${T('f_date')}</span><input type="date" id="a_date" value="${SEL_DATE}"/></label>
-    <label class="field"><span>${T('nav_lots')}</span><select id="a_lot"><option value="">${T('choose_lot')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></label>
+    <label class="field"><span>${T('nav_lots')}</span><select id="a_lot"><option value="">${T('choose_lot')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(lnm(l))}</option>`).join('')}</select></label>
     <span class="muted" style="font-size:13px">${T('choose_team')}</span>
     <div id="a_emps" class="stack" style="margin-top:10px">${(emps||[]).map(e=>`<label class="row between" style="gap:10px;background:var(--surface2);padding:12px;border-radius:12px;border:1px solid var(--line)"><span class="row" style="gap:10px"><input type="checkbox" class="a_ck" style="width:20px;height:20px" value="${e.id}"/> <span>${esc(e.full_name||T('role_employee'))}</span></span><button type="button" class="btn ghost a_lead" data-e="${e.id}" style="width:auto;padding:6px 10px;font-size:12px">👑 ${T('team_lead')}</button></label>`).join('')||`<div class="muted">${T('no_emps_add')}</div>`}</div>
     <div class="muted" style="font-size:13px;margin-top:14px">${T('assign_repeat')}</div>
@@ -1475,7 +1479,7 @@ function exportCSV(reports,empMap){
 async function renderMyDay(v){
   let asgs=[], offline=false;
   try{
-    const r1=await db.from('assignments').select('*, lots(name,address,region,lat,lng)').eq('employee_id',ME.id).is('deleted_at',null).gte('work_date',todayStr()).order('work_date').order('created_at');
+    const r1=await db.from('assignments').select('*, lots(name,name_en,name_ru,name_es,name_ar,address,region,lat,lng)').eq('employee_id',ME.id).is('deleted_at',null).gte('work_date',todayStr()).order('work_date').order('created_at');
     if(r1.error) throw r1.error; asgs=r1.data||[];
     try{ localStorage.setItem('cw_myday_'+ME.id, JSON.stringify({asgs})); }catch(_){}
   }catch(e){ offline=true; try{ const c=JSON.parse(localStorage.getItem('cw_myday_'+ME.id)||'null'); if(c){ asgs=c.asgs||[]; } }catch(_){} }
@@ -1494,7 +1498,7 @@ async function renderMyDay(v){
     wrap.appendChild(el(`<div style="margin:16px 2px 8px;font-weight:800;color:${dt===todayStr()?'var(--gold)':'var(--muted)'}">${label}</div>`));
     byDate[dt].forEach(a=>{ const isToday=dt===todayStr(); const pending=pend.has(a.id);
       const [cls,txt]=statusOf(a);
-      const c=el(`<div class="card" style="margin:0 0 10px"><div class="row between"><h3 style="margin:0">${esc(a.lots?.name||'')} ${a.is_lead?'👑':''}</h3><span class="pill ${cls}">${txt}</span></div>
+      const c=el(`<div class="card" style="margin:0 0 10px"><div class="row between"><h3 style="margin:0">${esc(lnm(a.lots))} ${a.is_lead?'👑':''}</h3><span class="pill ${cls}">${txt}</span></div>
         <div class="muted" style="font-size:13px;margin-top:4px">${esc(a.lots?.address||a.lots?.region||'')}</div>
         ${pending?`<div style="margin-top:6px"><span class="pill s-amber">⏳ ${T('pending_send')}</span></div>`:''}
         ${!isToday?`<div class="muted" style="font-size:12px;margin-top:6px">🔒 ${T('only_today')}</div>`:''}</div>`);
@@ -1506,7 +1510,7 @@ async function renderMyDay(v){
 function jobModal(a,isToday){
   const lot=a.lots||{}, arrived=!!a.arrived_at, finished=!!a.finished_at, lead=!!a.is_lead;
   const canArrive=isToday&&!arrived, canAct=isToday&&arrived&&!finished;
-  const m=el(`<div><h3>${esc(lot.name||'')} ${lead?'👑':''}</h3><div class="muted" style="margin-bottom:14px">${esc(lot.address||lot.region||'')}</div>
+  const m=el(`<div><h3>${esc(lnm(lot))} ${lead?'👑':''}</h3><div class="muted" style="margin-bottom:14px">${esc(lot.address||lot.region||'')}</div>
     ${!isToday?`<div class="card" style="border-color:rgba(245,158,11,.4);text-align:center">🔒 ${T('only_today')}</div>`:''}
     ${lead?`<div class="muted" style="font-size:12px;margin-bottom:10px">👑 ${T('team_lead')}</div>`:''}
     <div class="stack">
@@ -1543,7 +1547,7 @@ async function carLogModal(a){
   const lot=a.lots||{}; const wd=a.work_date||todayStr();
   let wt=lot.work_type; if(!wt){ try{ const {data}=await db.from('lots').select('work_type').eq('id',a.lot_id).single(); wt=data&&data.work_type; }catch(_){} } wt=wt==='partial'?'partial':'full';
   const {data:cars}=await db.from('car_logs').select('*').eq('lot_id',a.lot_id).eq('work_date',wd).order('created_at');
-  const m=el(`<div><h3>📋 ${T('carlog')} · ${esc(lot.name||'')}</h3>
+  const m=el(`<div><h3>📋 ${T('carlog')} · ${esc(lnm(lot))}</h3>
     <div class="muted" style="font-size:12px;margin-bottom:10px">${T('f_worktype')}: ${wt==='partial'?T('wt_partial'):T('wt_full')} · ${fmtDate(wd)}</div>
     <button class="btn gold big" id="addcar">${T('add_car')}</button>
     <div id="carlist" class="stack" style="margin-top:12px"></div></div>`);
@@ -1624,7 +1628,7 @@ function myMonthlyReport(){
     const ym=f.querySelector('#mm').value||nowM; const from=ym+'-01';
     const [y,mo]=ym.split('-').map(Number); const to=ymd(new Date(y,mo,0)); // last day of month
     const body=f.querySelector('#mmBody'); body.innerHTML='<div class="empty"><span class="spin"></span></div>';
-    const {data:asgs}=await db.from('assignments').select('work_date, arrived_at, finished_at, is_lead, lots(name,region)').eq('employee_id',ME.id).is('deleted_at',null).gte('work_date',from).lte('work_date',to).order('work_date');
+    const {data:asgs}=await db.from('assignments').select('work_date, arrived_at, finished_at, is_lead, lots(name,name_en,name_ru,name_es,name_ar,region)').eq('employee_id',ME.id).is('deleted_at',null).gte('work_date',from).lte('work_date',to).order('work_date');
     if(!asgs||!asgs.length){ body.innerHTML=`<div class="muted" style="margin-top:8px">${T('month_empty')}</div>`; return; }
     let totMs=0; const lines=asgs.map(a=>{ let hrs=''; if(a.arrived_at&&a.finished_at){ const ms=Math.max(0,new Date(a.finished_at)-new Date(a.arrived_at)); totMs+=ms; hrs=' · '+(ms/3600000).toFixed(1)+T('u_hours'); }
       return `${fmtDate(a.work_date)} · ${esc(a.lots?.name||'')}${a.is_lead?' 👑':''}${hrs}`; });
@@ -1654,6 +1658,7 @@ function renderSettings(v){
     <button class="btn gold" id="shareBtn" style="margin-bottom:12px">📤 ${T('share_app')}</button>
     ${isManager(ME.role)?`<button class="btn ghost" id="binBtn" style="margin-bottom:12px">${T('bin_open')}</button>`:''}
     ${isManager(ME.role)?`<div class="row" style="gap:8px;margin-bottom:12px"><button class="btn ghost" id="bkBtn" style="flex:1">${T('backup')}</button><button class="btn ghost" id="rsBtn" style="flex:1">${T('restore_file')}</button></div>`:''}
+    ${isManager(ME.role)?`<button class="btn ghost" id="lnBtn" style="margin-bottom:12px">${T('upload_names')}</button>`:''}
     ${isManager(ME.role)?`<button class="btn ghost" id="mgrBtn" style="margin-bottom:12px">${T('manage_mgrs')}</button>`:''}
     <button class="btn danger" id="lo">${T('btn_logout')}</button>
     <div class="badge">AppNest · v${APP_VERSION}</div>`;
@@ -1666,6 +1671,7 @@ function renderSettings(v){
   const bb=v.querySelector('#binBtn'); if(bb) bb.onclick=binModal;
   const bk=v.querySelector('#bkBtn'); if(bk) bk.onclick=doBackup;
   const rs=v.querySelector('#rsBtn'); if(rs) rs.onclick=doRestore;
+  const ln=v.querySelector('#lnBtn'); if(ln) ln.onclick=uploadLotNames;
   const mb=v.querySelector('#mgrBtn'); if(mb) mb.onclick=managersModal;
   v.querySelector('#lo').onclick=logout;
 }
@@ -1716,12 +1722,24 @@ async function clearLockFor(userId){ const {error}=await db.functions.invoke('cr
 
 async function doBackup(){
   const [{data:lots},{data:emps}]=await Promise.all([
-    db.from('lots').select('id,name,client_name,region,address,lat,lng,active').is('deleted_at',null),
+    db.from('lots').select('id,name,name_en,name_ru,name_es,name_ar,client_name,region,address,lat,lng,active').is('deleted_at',null),
     db.from('profiles').select('id,full_name,username,language,active').eq('role','employee').is('archived_at',null)]);
   const backup={app:'carwash',version:APP_VERSION,date:new Date().toISOString(),lots:lots||[],employees:emps||[]};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=`carwash_backup_${todayStr()}.json`; a.click(); URL.revokeObjectURL(u);
   toast(T('backup_done'));
+}
+function uploadLotNames(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json,.json';
+  inp.onchange=async()=>{ const file=inp.files&&inp.files[0]; if(!file) return;
+    let data; try{ data=JSON.parse(await file.text()); }catch(_){ toast(T('names_bad')); return; }
+    const arr=Array.isArray(data)?data:(data.lots||[]);
+    if(!arr.length){ toast(T('names_bad')); return; }
+    toast(T('restoring')); let ok=0;
+    for(const l of arr){ if(!l.id) continue; try{ const {error}=await db.from('lots').update({name_en:l.name_en||null,name_ru:l.name_ru||null,name_es:l.name_es||null,name_ar:l.name_ar||null}).eq('id',l.id); if(!error) ok++; }catch(_){} }
+    toast(T('names_loaded')); render();
+  };
+  inp.click();
 }
 function doRestore(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json,.json';
