@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='1.8';
+const APP_VERSION='1.9';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -441,7 +441,15 @@ const DICT={
  sched_pick_emp:{he:'בחר עובד לסידור קבוע…',en:'Choose a worker for a permanent schedule…',ru:'Выберите работника…',es:'Elige un trabajador…',ar:'اختر عاملًا للجدول الثابت…'},
  sched_delete:{he:'מחק סידור קבוע',en:'Delete permanent schedule',ru:'Удалить график',es:'Eliminar horario',ar:'حذف الجدول الثابت'},
  sched_delete_confirm:{he:'למחוק את כל הסידור הקבוע של העובד? השיבוצים העתידיים שנוצרו ממנו יוסרו.',en:"Delete this worker's entire permanent schedule? Future generated shifts will be removed.",ru:'Удалить весь постоянный график работника?',es:'¿Eliminar todo el horario fijo del trabajador?',ar:'حذف كامل الجدول الثابت للعامل؟'},
- sched_deleted:{he:'הסידור הקבוע נמחק',en:'Permanent schedule deleted',ru:'График удалён',es:'Horario eliminado',ar:'تم حذف الجدول'}
+ sched_deleted:{he:'הסידור הקבוע נמחק',en:'Permanent schedule deleted',ru:'График удалён',es:'Horario eliminado',ar:'تم حذف الجدول'},
+ manage_report:{he:'עריכת דיווח ותמונות',en:'Edit report & photos',ru:'Отчёт и фото',es:'Informe y fotos',ar:'التقرير والصور'},
+ photos:{he:'תמונות',en:'Photos',ru:'Фото',es:'Fotos',ar:'الصور'},
+ add_photo:{he:'➕ הוסף תמונה',en:'➕ Add photo',ru:'➕ Добавить фото',es:'➕ Añadir foto',ar:'➕ إضافة صورة'},
+ photo_added:{he:'התמונה נוספה',en:'Photo added',ru:'Фото добавлено',es:'Foto añadida',ar:'أُضيفت الصورة'},
+ photo_deleted:{he:'התמונה נמחקה',en:'Photo deleted',ru:'Фото удалено',es:'Foto eliminada',ar:'حُذفت الصورة'},
+ del_photo_confirm:{he:'למחוק את התמונה?',en:'Delete this photo?',ru:'Удалить фото?',es:'¿Eliminar la foto?',ar:'حذف الصورة؟'},
+ no_photos:{he:'אין תמונות',en:'No photos',ru:'Нет фото',es:'Sin fotos',ar:'لا صور'},
+ no_report:{he:'אין דיווח',en:'No report',ru:'Нет отчёта',es:'Sin informe',ar:'لا تقرير'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 const DOWF={he:['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],en:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],ru:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'],es:['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],ar:['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']};
@@ -678,7 +686,7 @@ async function logout(){ await db.auth.signOut(); localStorage.removeItem('cw_me
 function buildNav(){
   const nav=document.getElementById('nav');
   const items=isManager(ME.role)
-    ? [['dash','🗂️','nav_dash'],['weekly','🧽','nav_weekly'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['emps','👥','nav_emps'],['reports','📊','nav_reports'],['settings','⚙️','nav_settings']]
+    ? [['dash','🗂️','nav_dash'],['weekly','🧽','nav_weekly'],['lots','📍','nav_lots'],['assign','🗓️','nav_assign'],['emps','👥','nav_emps'],['reports','📊','nav_reports'],['myday','📋','nav_myday'],['settings','⚙️','nav_settings']]
     : [['myday','📋','nav_myday'],['settings','⚙️','nav_settings']];
   nav.innerHTML='';
   items.forEach(([id,ic,k])=>{ const b=el(`<button data-id="${id}"><span class="ic">${ic}</span><span>${T(k)}</span></button>`);
@@ -887,12 +895,12 @@ async function renderDash(v){
               <span class="pill ${cls}">${txt}</span>
               <button class="btn ghost" style="width:auto;padding:4px 9px" data-del="${a.id}">🗑️</button></span></div>`; }).join('')}
         </div>
-        ${(rep||dayDocs.length)?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-          <div class="row between"><span>${rep?`🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}`:''}</span>
-          <span class="row" style="gap:6px">${dayDocs.length?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-docs="1">📄 ${dayDocs.length}</button>`:''}${rep?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-editrep="1">✏️</button>`:''}</span></div>
-          ${rep&&rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`:''}`;
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <div class="row between"><span>${rep?`🚗 ${rep.cars_washed} ${T('u_cars')} · ✨ ${rep.preps} ${T('u_preps')}`:`<span class="muted" style="font-size:12px">${T('no_report')}</span>`}</span>
+          <span class="row" style="gap:6px">${dayDocs.length?`<button class="btn ghost" style="width:auto;padding:6px 10px" data-docs="1">📄 ${dayDocs.length}</button>`:''}<button class="btn ghost" style="width:auto;padding:6px 10px" data-editrep="1">✏️</button></span></div>
+          ${rep&&rep.note?`<div class="muted" style="font-size:13px;margin-top:8px">📝 ${esc(rep.note)}</div>`:''}</div>`;
       const gb=c.querySelector('[data-docs]'); if(gb) gb.onclick=()=>docsGallery(lot?.name,dt,dayDocs,empMap);
-      const eb=c.querySelector('[data-editrep]'); if(eb) eb.onclick=()=>editReportForm(rep);
+      const eb=c.querySelector('[data-editrep]'); if(eb) eb.onclick=()=>editReportForm(lotId,dt,rep);
       const sl=c.querySelector('[data-setlead]'); if(sl) sl.onclick=()=>setLeadFlow(lotId,dt,lrows,empMap);
       c.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm(T('del_confirm'))) return;
         const {error}=await db.from('assignments').update({deleted_at:new Date().toISOString()}).eq('id',b.dataset.del);
@@ -907,16 +915,41 @@ async function viewPhoto(path,note){
   const m=el(`<div><h3>${T('btn_doc')}</h3><img class="thumb" src="${data.signedUrl}"/>${note?`<p class="muted" style="margin-top:10px">📝 ${esc(note)}</p>`:''}<button class="btn ghost" style="margin-top:12px" id="cl">✕</button></div>`);
   const back=openModal(m); m.querySelector('#cl').onclick=()=>back.remove();
 }
-function editReportForm(rep){
-  const f=el(`<div><h3>${T('edit_report')}</h3>
+async function editReportForm(lotId,workDate,rep){
+  let docs=[]; try{ const {data}=await db.from('lot_documents').select('*').eq('lot_id',lotId).eq('work_date',workDate).order('created_at'); docs=data||[]; }catch(_){}
+  const f=el(`<div><h3>${T('manage_report')}</h3>
     <label class="field"><span>${T('f_cars')}</span>${stepperHTML('er_cars')}</label>
     <label class="field"><span>${T('f_preps')}</span>${stepperHTML('er_preps')}</label>
     <label class="field"><span>${T('f_note')}</span><textarea id="er_note" rows="2"></textarea></label>
-    <button class="btn gold big" id="er_save">${T('btn_save')}</button></div>`);
+    <div style="font-weight:800;margin:10px 2px 6px">${T('photos')} <span id="er_pc" class="muted" style="font-size:12px"></span></div>
+    <div id="er_photos" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+    <input type="file" id="er_file" accept="image/*" capture="environment" style="display:none"/>
+    <button class="btn ghost" id="er_add" style="margin-top:10px">${T('add_photo')}</button>
+    <button class="btn gold big" id="er_save" style="margin-top:10px">${T('btn_save')}</button></div>`);
   const back=openModal(f); bindStepper(f,'er_cars'); bindStepper(f,'er_preps');
-  f.querySelector('#er_cars').value=rep.cars_washed||0; f.querySelector('#er_preps').value=rep.preps||0; f.querySelector('#er_note').value=rep.note||'';
+  f.querySelector('#er_cars').value=(rep&&rep.cars_washed)||0; f.querySelector('#er_preps').value=(rep&&rep.preps)||0; f.querySelector('#er_note').value=(rep&&rep.note)||'';
+  const pw=f.querySelector('#er_photos');
+  async function paintPhotos(){ f.querySelector('#er_pc').textContent='('+docs.length+')'; pw.innerHTML='';
+    if(!docs.length){ pw.innerHTML=`<div class="muted" style="grid-column:1/-1;font-size:12px">${T('no_photos')}</div>`; return; }
+    const {data:signed}=await db.storage.from('documents').createSignedUrls(docs.map(d=>d.photo_path),3600);
+    const urlBy={}; (signed||[]).forEach(s=>{ if(s.signedUrl) urlBy[s.path]=s.signedUrl; });
+    docs.forEach(d=>{ const url=urlBy[d.photo_path]; const cell=el(`<div><img class="thumb" style="margin:0;height:110px;object-fit:cover" src="${url||''}"/><button class="btn danger" style="margin-top:4px;padding:6px" data-del="1">🗑️</button></div>`);
+      cell.querySelector('[data-del]').onclick=async()=>{ if(!confirm(T('del_photo_confirm'))) return;
+        try{ await db.storage.from('documents').remove([d.photo_path]); }catch(_){}
+        await db.from('lot_documents').delete().eq('id',d.id); docs=docs.filter(x=>x.id!==d.id); toast(T('photo_deleted')); paintPhotos(); };
+      pw.appendChild(cell); }); }
+  paintPhotos();
+  f.querySelector('#er_add').onclick=()=>f.querySelector('#er_file').click();
+  f.querySelector('#er_file').onchange=async(e)=>{ const file=e.target.files&&e.target.files[0]; if(!file) return;
+    const btn=f.querySelector('#er_add'); btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+    try{ const blob=await compressImage(file); const path=`${lotId}/${workDate}/${Date.now()}.jpg`;
+      const up=await db.storage.from('documents').upload(path,blob,{contentType:'image/jpeg',upsert:true}); if(up.error) throw up.error;
+      const ins=await db.from('lot_documents').insert({lot_id:lotId,work_date:workDate,photo_path:path,submitted_by:ME.id}).select().single();
+      docs.push(ins.data||{id:'tmp'+Date.now(),photo_path:path}); toast(T('photo_added')); await paintPhotos();
+    }catch(err){ toast(T('err_generic')+(err.message||'')); }
+    btn.disabled=false; btn.textContent=T('add_photo'); e.target.value=''; };
   f.querySelector('#er_save').onclick=async(e)=>{ const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
-    const {error}=await db.from('lot_reports').update({cars_washed:+f.querySelector('#er_cars').value||0,preps:+f.querySelector('#er_preps').value||0,note:f.querySelector('#er_note').value.trim()}).eq('id',rep.id);
+    const {error}=await db.from('lot_reports').upsert({lot_id:lotId,work_date:workDate,cars_washed:+f.querySelector('#er_cars').value||0,preps:+f.querySelector('#er_preps').value||0,note:f.querySelector('#er_note').value.trim(),submitted_by:ME.id},{onConflict:'lot_id,work_date'});
     if(error){ toast(T('err_generic')+error.message); b.disabled=false; b.textContent=T('btn_save'); return; }
     back.remove(); toast(T('toast_saved')); render(); };
 }
@@ -1003,7 +1036,7 @@ function lotForm(existing){
 
 /* ================= MANAGER · ASSIGN ================= */
 async function renderAssign(v){
-  const [{data:lots},emps]=await Promise.all([db.from('lots').select('*').eq('active',true).is('deleted_at',null).order('name'),employeeList()]);
+  const [{data:lots},emps]=await Promise.all([db.from('lots').select('*').eq('active',true).is('deleted_at',null).order('name'),assignableList()]);
   v.innerHTML=`<h2 class="screen-title">${T('assign_title')}</h2><div class="card">
     <label class="field"><span>${T('f_date')}</span><input type="date" id="a_date" value="${SEL_DATE}"/></label>
     <label class="field"><span>${T('nav_lots')}</span><select id="a_lot"><option value="">${T('choose_lot')}</option>${(lots||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></label>
@@ -1041,7 +1074,8 @@ function genDates(start,dows,weeks){ const[y,m,d]=start.split('-').map(Number); 
 
 /* ================= EMPLOYEES helpers ================= */
 async function employeeList(){ const {data}=await db.from('profiles').select('id,full_name').eq('role','employee').eq('active',true).is('archived_at',null).order('full_name'); return data||[]; }
-async function employeeMap(){ const l=await employeeList(); const m={}; l.forEach(e=>m[e.id]=e.full_name); return m; }
+async function assignableList(){ const {data}=await db.from('profiles').select('id,full_name,role').in('role',['employee','manager','owner']).eq('active',true).is('archived_at',null).order('full_name'); return data||[]; }
+async function employeeMap(){ const {data}=await db.from('profiles').select('id,full_name'); const m={}; (data||[]).forEach(e=>m[e.id]=e.full_name); return m; }
 async function renderEmps(v){
   const {data:emps}=await db.from('profiles').select('id,full_name,username,active').eq('role','employee').is('archived_at',null).order('full_name');
   const active=(emps||[]).filter(e=>e.active), inactive=(emps||[]).filter(e=>!e.active);
