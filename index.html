@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='2.3';
+const APP_VERSION='2.4';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -1733,11 +1733,13 @@ function uploadLotNames(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json,.json';
   inp.onchange=async()=>{ const file=inp.files&&inp.files[0]; if(!file) return;
     let data; try{ data=JSON.parse(await file.text()); }catch(_){ toast(T('names_bad')); return; }
-    const arr=Array.isArray(data)?data:(data.lots||[]);
-    if(!arr.length){ toast(T('names_bad')); return; }
+    const rows=(Array.isArray(data)?data:(data.lots||[])).filter(l=>l&&l.id);
+    if(!rows.length){ toast(T('names_bad')); return; }
     toast(T('restoring')); let ok=0;
-    for(const l of arr){ if(!l.id) continue; try{ const {error}=await db.from('lots').update({name_en:l.name_en||null,name_ru:l.name_ru||null,name_es:l.name_es||null,name_ar:l.name_ar||null}).eq('id',l.id); if(!error) ok++; }catch(_){} }
-    toast(T('names_loaded')); render();
+    for(let i=0;i<rows.length;i+=15){ const chunk=rows.slice(i,i+15);
+      const res=await Promise.all(chunk.map(l=>db.from('lots').update({name_en:l.name_en||null,name_ru:l.name_ru||null,name_es:l.name_es||null,name_ar:l.name_ar||null}).eq('id',l.id)));
+      ok+=res.filter(r=>!r.error).length; }
+    toast(T('names_loaded')+' ('+ok+'/'+rows.length+')'); render();
   };
   inp.click();
 }

@@ -1,6 +1,6 @@
 // Car-wash app service worker.
 // Bump CACHE (v1 -> v2 ...) whenever you upload a new index.html so users get it.
-const CACHE = 'carwash-v18';
+const CACHE = 'carwash-v19';
 const CORE = [
   './', './index.html', './manifest.json', './privacy_policy.html', './icon-192.png', './icon-512.png',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
