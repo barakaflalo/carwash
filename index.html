@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='2.0';
+const APP_VERSION='2.1';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -459,7 +459,9 @@ const DICT={
  media_gone:{he:'הקובץ נמחק אחרי שבוע',en:'File deleted after a week',ru:'Файл удалён',es:'Archivo eliminado',ar:'حُذف الملف'},
  rec_start:{he:'🎤 הקלטה',en:'🎤 Record',ru:'🎤 Запись',es:'🎤 Grabar',ar:'🎤 تسجيل'},
  rec_stop:{he:'⏹ עצור ושלח',en:'⏹ Stop & send',ru:'⏹ Стоп',es:'⏹ Parar',ar:'⏹ إيقاف'},
- badge_new:{he:'חדש',en:'new',ru:'новое',es:'nuevo',ar:'جديد'}
+ badge_new:{he:'חדש',en:'new',ru:'новое',es:'nuevo',ar:'جديد'},
+ mgr_thread:{he:'👥 מנהלים',en:'👥 Managers',ru:'👥 Менеджеры',es:'👥 Gerentes',ar:'👥 المديرون'},
+ dl_device:{he:'⤓ הורד למכשיר',en:'⤓ Save to device',ru:'⤓ Сохранить',es:'⤓ Guardar',ar:'⤓ حفظ للجهاز'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 const DOWF={he:['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],en:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],ru:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'],es:['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],ar:['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']};
@@ -701,7 +703,7 @@ function buildNav(){
     : [['myday','📋','nav_myday'],['chat','💬','nav_chat'],['settings','⚙️','nav_settings']];
   nav.innerHTML='';
   items.forEach(([id,ic,k])=>{ const b=el(`<button data-id="${id}"><span class="ic">${ic}</span><span>${T(k)}</span></button>`);
-    b.onclick=()=>{ CHAT_WORKER=null; CURRENT=id; render(); }; nav.appendChild(b); });
+    b.onclick=()=>{ CHAT_WORKER=null; CHAT_IS_MGR=false; CURRENT=id; render(); }; nav.appendChild(b); });
 }
 function markNav(){ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.id===CURRENT)); }
 
@@ -812,7 +814,14 @@ async function scheduleModal(empId){
 }
 
 /* ================= CHAT · "הערות למנהל" ================= */
-let CHAT_WORKER=null, CHAT_TIMER=null, CHAT_REC=null;
+let CHAT_WORKER=null, CHAT_TIMER=null, CHAT_REC=null, CHAT_IS_MGR=false, MGR_OWNER_ID=null;
+async function ensureMgrOwner(){ if(MGR_OWNER_ID) return MGR_OWNER_ID; try{ const {data}=await db.from('profiles').select('id').eq('role','owner').limit(1).single(); MGR_OWNER_ID=data&&data.id; }catch(_){} return MGR_OWNER_ID; }
+async function downloadMedia(url,filename){
+  try{ const r=await fetch(url); const blob=await r.blob();
+    if(navigator.canShare){ try{ const file=new File([blob],filename,{type:blob.type}); if(navigator.canShare({files:[file]})){ await navigator.share({files:[file]}); return; } }catch(_){} }
+    const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000);
+  }catch(e){ window.open(url,'_blank'); }
+}
 function chatMediaUrl(path){ return db.storage.from('chat').getPublicUrl(path).data.publicUrl; }
 async function markRead(workerId){ try{ await db.from('message_reads').upsert({user_id:ME.id,worker_id:workerId,last_read:new Date().toISOString()},{onConflict:'user_id,worker_id'}); }catch(_){} }
 async function sendMessage(workerId,kind,body,blob,ext){
@@ -832,17 +841,20 @@ async function renderChatList(v){
     if(m.sender_id!==ME.id && (!lastRead[m.worker_id]||m.created_at>lastRead[m.worker_id])) unread[m.worker_id]=(unread[m.worker_id]||0)+1; });
   v.innerHTML=`<h2 class="screen-title">${T('chat_title')}</h2><div class="muted" style="font-size:12px;margin:0 2px 10px">${T('chat_pick')}</div><div id="clist" class="stack"></div>`;
   const wrap=v.querySelector('#clist');
-  if(!workers||!workers.length){ wrap.innerHTML=`<div class="empty">${T('emps_empty')}</div>`; return; }
+  const ownerId=await ensureMgrOwner();
+  if(ownerId){ const mc=el(`<div class="card row between" style="margin:0 0 6px;cursor:pointer;border-color:rgba(212,175,55,.4)"><span style="font-weight:800">${T('mgr_thread')}</span>${unread[ownerId]?`<span class="pill s-red">${unread[ownerId]} ${T('badge_new')}</span>`:''}</div>`);
+    mc.onclick=()=>{ CHAT_WORKER=ownerId; CHAT_IS_MGR=true; render(); }; wrap.appendChild(mc); }
+  if(!workers||!workers.length){ if(!ownerId) wrap.innerHTML=`<div class="empty">${T('emps_empty')}</div>`; return; }
   workers.sort((a,b)=>(unread[b.id]||0)-(unread[a.id]||0)||(latest[b.id]||'').localeCompare(latest[a.id]||''));
   workers.forEach(w=>{ const c=el(`<div class="card row between" style="margin:0;cursor:pointer"><span>💬 ${esc(w.full_name||w.username||'')}</span>${unread[w.id]?`<span class="pill s-red">${unread[w.id]} ${T('badge_new')}</span>`:''}</div>`);
-    c.onclick=()=>{ CHAT_WORKER=w.id; render(); }; wrap.appendChild(c); });
+    c.onclick=()=>{ CHAT_WORKER=w.id; CHAT_IS_MGR=false; render(); }; wrap.appendChild(c); });
 }
 async function renderChat(v,workerId){
   const [{data:msgs},{data:prof}]=await Promise.all([
     db.from('messages').select('*').eq('worker_id',workerId).order('created_at'),
     db.from('profiles').select('full_name,username').eq('id',workerId).single()]);
   const mgr=isManager(ME.role);
-  const title=mgr?(prof?.full_name||prof?.username||T('chat_title')):T('chat_title');
+  const title=CHAT_IS_MGR?T('mgr_thread'):(mgr?(prof?.full_name||prof?.username||T('chat_title')):T('chat_title'));
   v.innerHTML=`<div class="row between" style="margin-bottom:8px">
       ${mgr?`<button class="btn ghost" style="width:auto;padding:6px 12px" id="cback">→</button>`:'<span></span>'}
       <h2 class="screen-title" style="margin:0">${esc(title)}</h2></div>
@@ -858,21 +870,21 @@ async function renderChat(v,workerId){
       <input type="file" id="cfphoto" accept="image/*" capture="environment" style="display:none"/>
       <input type="file" id="cfvideo" accept="video/*" capture="environment" style="display:none"/>
     </div>`;
-  if(mgr) v.querySelector('#cback').onclick=()=>{ CHAT_WORKER=null; render(); };
+  if(mgr) v.querySelector('#cback').onclick=()=>{ CHAT_WORKER=null; CHAT_IS_MGR=false; render(); };
   const box=v.querySelector('#cmsgs');
   const paint=(list)=>{ box.innerHTML=''; if(!list.length){ box.innerHTML=`<div class="muted" style="text-align:center;padding:20px">${T('chat_empty')}</div>`; return; }
     list.forEach(m=>{ const mine=m.sender_id===ME.id;
       const b=el(`<div style="align-self:${mine?'flex-start':'flex-end'};max-width:82%;background:${mine?'var(--gold-soft)':'var(--surface2)'};color:${mine?'#1a1200':'var(--text)'};border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin:0 0 8px"></div>`);
-      let inner='';
-      if(m.media_path){ const url=chatMediaUrl(m.media_path);
+      let inner=''; let dlUrl=null, dlName=null;
+      if(m.media_path){ const url=chatMediaUrl(m.media_path); const ext=(m.media_path.split('.').pop()||'').toLowerCase(); dlUrl=url; dlName=`chat_${(m.created_at||'').slice(0,10)}_${(m.id||'').slice(0,6)}.${ext||'jpg'}`;
         if(m.kind==='image') inner+=`<img src="${url}" style="max-width:100%;border-radius:8px;display:block"/>`;
         else if(m.kind==='video') inner+=`<video src="${url}" controls playsinline style="max-width:100%;border-radius:8px;display:block"></video>`;
         else if(m.kind==='voice') inner+=`<audio src="${url}" controls style="max-width:210px;display:block"></audio>`;
-        inner+=`<a href="${url}" download class="muted" style="font-size:11px;display:inline-block;margin-top:4px">⤓ ${T('btn_download')}</a>`;
+        inner+=`<button class="btn ghost" data-dl style="padding:5px 10px;font-size:12px;margin-top:6px;width:auto">${T('dl_device')}</button>`;
       } else if(m.kind!=='text'){ inner+=`<span class="muted" style="font-size:12px">🗑️ ${T('media_gone')}</span>`; }
       if(m.body) inner+=`<div style="margin-top:${m.media_path?'6px':'0'};white-space:pre-wrap">${esc(m.body)}</div>`;
       inner+=`<div class="muted" style="font-size:10px;margin-top:4px">${fmtTime(m.created_at)}</div>`;
-      b.innerHTML=inner; box.appendChild(b); });
+      b.innerHTML=inner; const dlb=b.querySelector('[data-dl]'); if(dlb) dlb.onclick=()=>downloadMedia(dlUrl,dlName); box.appendChild(b); });
     box.scrollTop=box.scrollHeight;
   };
   box.style.display='flex'; box.style.flexDirection='column';
