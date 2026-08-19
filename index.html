@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org; font-src 'self'; object-src 'none'; base-uri 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'wasm-unsafe-eval' blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; font-src 'self'; object-src 'none'; base-uri 'none'" />
 <meta name="theme-color" content="#0a0a0b" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -178,7 +178,7 @@
 const SUPA_URL='https://kdcuphsvvhtrbusvvagn.supabase.co';
 const SUPA_KEY='sb_publishable_zQovU0dZKcZey64Y2GrIRQ_FTBqHbqc';
 const EMAIL_SUFFIX='@carwash.local';
-const APP_VERSION='2.6';
+const APP_VERSION='2.7';
 const db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 /* ================= i18n ================= */
@@ -488,7 +488,11 @@ const DICT={
  no_data_day:{he:'אין רכבים ליום זה',en:'No cars for this day',ru:'Нет машин',es:'Sin autos',ar:'لا سيارات'},
  upload_names:{he:'🌐 העלאת שמות מגרשים בשפות',en:'🌐 Upload lot names (languages)',ru:'🌐 Загрузить названия (языки)',es:'🌐 Subir nombres (idiomas)',ar:'🌐 رفع أسماء المواقع (لغات)'},
  names_loaded:{he:'השמות בשפות נטענו',en:'Language names loaded',ru:'Названия загружены',es:'Nombres cargados',ar:'تم تحميل الأسماء'},
- names_bad:{he:'קובץ שמות לא תקין',en:'Invalid names file',ru:'Неверный файл',es:'Archivo no válido',ar:'ملف غير صالح'}
+ names_bad:{he:'קובץ שמות לא תקין',en:'Invalid names file',ru:'Неверный файл',es:'Archivo no válido',ar:'ملف غير صالح'},
+ ocr_read:{he:'🔍 קרא מספר מהצילום',en:'🔍 Read plate from photo',ru:'🔍 Распознать номер',es:'🔍 Leer matrícula',ar:'🔍 قراءة الرقم من الصورة'},
+ ocr_working:{he:'קורא מספר…',en:'Reading…',ru:'Распознавание…',es:'Leyendo…',ar:'جارٍ القراءة…'},
+ ocr_none:{he:'לא זוהה מספר — הקלד/י ידנית',en:'No number detected — type it',ru:'Номер не найден — введите вручную',es:'No detectado — escríbelo',ar:'لم يُقرأ — اكتبه يدويًا'},
+ ocr_check:{he:'בדוק/י שהמספר נכון',en:'Check the number is correct',ru:'Проверьте номер',es:'Verifica el número',ar:'تحقق من الرقم'}
 };
 const DOW={he:['א','ב','ג','ד','ה','ו','ש'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sá'],ar:['ح','ن','ث','ر','خ','ج','س']};
 const DOWF={he:['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],en:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],ru:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'],es:['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],ar:['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']};
@@ -1427,6 +1431,17 @@ async function docsSection(docs,empMap,v){
     zipBtn.disabled=false; zipBtn.textContent=orig; };
 }
 let EXCELJS_P=null;
+let TESS_P=null, TESS_WORKER=null;
+function loadTesseract(){ if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  if(!TESS_P) TESS_P=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'; s.onload=()=>res(window.Tesseract); s.onerror=rej; document.head.appendChild(s); });
+  return TESS_P; }
+async function plateOCR(blob){
+  const TS=await loadTesseract();
+  if(!TESS_WORKER){ TESS_WORKER=await TS.createWorker('eng',1,{ workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js', corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1' });
+    await TESS_WORKER.setParameters({ tessedit_char_whitelist:'0123456789', tessedit_pageseg_mode:'7' }); }
+  const {data}=await TESS_WORKER.recognize(blob);
+  return ((data&&data.text)||'').replace(/\D/g,'');
+}
 function loadExcelJS(){ if(window.ExcelJS) return Promise.resolve(window.ExcelJS);
   if(!EXCELJS_P) EXCELJS_P=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'; s.onload=()=>res(window.ExcelJS); s.onerror=rej; document.head.appendChild(s); });
   return EXCELJS_P; }
@@ -1570,15 +1585,21 @@ function carEntryForm(a,wt,onSaved){
     <div id="carphoto" style="margin-bottom:10px"></div>
     <input type="file" id="cf" accept="image/*" capture="environment" style="display:none"/>
     <button class="btn ghost" id="snap" style="margin-bottom:10px">${T('scan_plate')}</button>
+    <button class="btn ghost" id="ocr" style="margin-bottom:10px;display:none">${T('ocr_read')}</button>
     <label class="field"><span>${T('plate')}</span><input id="plate" placeholder="${T('plate_ph')}" inputmode="numeric"/></label>
+    <div id="ocrhint" class="muted" style="font-size:12px;margin:-4px 2px 6px;display:none">${T('ocr_check')}</div>
     <div style="font-weight:800;margin:10px 2px 6px">${T('carlog')}</div>
     <div id="acts" class="stack">${items.map(([k,lbl])=>`<label class="row" style="gap:10px;background:var(--surface2);padding:11px;border-radius:11px;border:1px solid var(--line)"><input type="checkbox" class="act" value="${k}" style="width:20px;height:20px"/><span>${T(lbl)}</span></label>`).join('')}</div>
     <label class="field" style="margin-top:10px"><span>${T('f_note')}</span><textarea id="cnote" rows="2"></textarea></label>
     <button class="btn gold big" id="csave" style="margin-top:10px">${T('btn_save')}</button></div>`);
-  const back=openModal(f); const pv=f.querySelector('#carphoto');
+  const back=openModal(f); const pv=f.querySelector('#carphoto'); const ocrBtn=f.querySelector('#ocr'); const hint=f.querySelector('#ocrhint');
   f.querySelector('#snap').onclick=()=>f.querySelector('#cf').click();
   f.querySelector('#cf').onchange=async e=>{ const file=e.target.files&&e.target.files[0]; if(!file) return;
-    try{ photoBlob=await compressImage(file,1280,0.6); const url=URL.createObjectURL(photoBlob); pv.innerHTML=`<img src="${url}" style="max-width:100%;border-radius:10px"/>`; }catch(_){ toast('✕'); } };
+    try{ photoBlob=await compressImage(file,1280,0.6); const url=URL.createObjectURL(photoBlob); pv.innerHTML=`<img src="${url}" style="max-width:100%;border-radius:10px"/>`; ocrBtn.style.display=''; }catch(_){ toast('✕'); } };
+  ocrBtn.onclick=async()=>{ if(!photoBlob) return; const lbl=ocrBtn.textContent; ocrBtn.disabled=true; ocrBtn.innerHTML='<span class="spin"></span> '+T('ocr_working');
+    try{ const digits=await plateOCR(photoBlob); if(digits){ f.querySelector('#plate').value=digits; hint.style.display=''; } else toast(T('ocr_none')); }
+    catch(_){ toast(T('ocr_none')); }
+    ocrBtn.disabled=false; ocrBtn.textContent=lbl; };
   f.querySelector('#csave').onclick=async(e)=>{ const b=e.target; b.disabled=true; b.innerHTML='<span class="spin"></span>';
     const plate=f.querySelector('#plate').value.trim();
     const types=[...f.querySelectorAll('.act:checked')].map(x=>x.value);
